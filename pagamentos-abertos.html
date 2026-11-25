@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pagamentos em Aberto</title>
+  <link rel="stylesheet" href="style.css?v=20261123-grafico-competencia">
+  <script src="vendor/exceljs.min.js"></script>
+  <script src="vendor/pdfkit.standalone.js"></script>
+  <script src="retencoes-pagamentos.js"></script>
+  <script src="demo-regras-os.js"></script>
+  <script src="demo-relatorios.js"></script>
+  <script src="demo-inconsistencias.js"></script>
+  <script src="demo-engine.js"></script>
+  <script src="demo-adapter.js"></script>
+  <link rel="stylesheet" href="demo-ui.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-esquerda">
+      <div class="topbar-brand">
+        <img src="assets/identidade.svg" alt="Identidade da demonstração" class="topbar-logo" role="button" tabindex="0" title="Abrir menu principal" aria-label="Abrir menu principal" onclick="abrirMenuLateral()">
+        <div class="topbar-brand-texto">
+          <span class="topbar-subtitulo">Sistema interno de gest&atilde;o</span>
+          <h1>Pagamentos em Aberto</h1>
+        </div>
+      </div>
+    </div>
+    <div class="topbar-acoes">
+      <div class="usuario-logado-box">
+        <span class="usuario-logado-label">Logado como</span>
+        <strong id="usuarioLogadoNome">-</strong>
+      </div>
+      <button class="btn-topo btn-secundario" onclick="abrirModalExportacaoPagamentos()">Exportar planilha</button>
+      <button class="btn-topo btn-secundario" onclick="abrirModalImportacaoPagamentos()">Importar planilha</button>
+      <button class="btn-topo btn-primario" onclick="abrirModalPagamento()">Novo pagamento</button>
+      <button type="button" class="btn-topo btn-secundario" id="btnSelecionarPagamentos" onclick="alternarModoSelecaoPagamentos()" aria-pressed="false">Selecionar</button>
+      <button type="button" class="btn-topo btn-secundario" id="btnLixeiraPagamentos" onclick="abrirLixeiraPagamentos()">Lixeira</button>
+    </div>
+  </header>
+
+  <main class="container-principal financeiro-page pagamentos-page">
+    <section class="cards-resumo cards-resumo-financeiro">
+      <div class="resumo-card"><span class="resumo-label">Registros</span><strong id="pagResumoTotal">0</strong></div>
+      <div class="resumo-card"><span class="resumo-label">Em aberto</span><strong id="pagResumoAberto">0</strong></div>
+      <div class="resumo-card resumo-card-valores resumo-card-moeda">
+        <span class="resumo-label" id="pagResumoValorAbertoLabel">Valor em aberto</span>
+        <strong id="pagResumoValorAberto">R$ 0,00</strong>
+        <button type="button" class="resumo-toggle-valor" onclick="alternarModoValoresResumoPagamentos()" id="pagResumoModoValorAberto">Bruto</button>
+      </div>
+      <div class="resumo-card resumo-card-valores resumo-card-moeda">
+        <span class="resumo-label">Total geral</span>
+        <strong id="pagResumoTotalGeral">R$ 0,00</strong>
+        <button type="button" class="resumo-toggle-valor" onclick="alternarModoValoresResumoPagamentos()" id="pagResumoModoTotalGeral">Bruto</button>
+      </div>
+    </section>
+
+    <section class="pagamentos-graficos">
+      <div class="financeiro-lista-box"><h2 id="tituloGraficoCompetenciaPagamentos">Valores brutos por compet&ecirc;ncia (R$)</h2><div class="pagamentos-grafico-competencia-rolagem" role="region" aria-labelledby="tituloGraficoCompetenciaPagamentos" tabindex="0"><canvas id="graficoCompetenciaPagamentos" height="170"></canvas></div></div>
+      <div class="financeiro-lista-box"><h2>Status dos pagamentos</h2><canvas id="graficoStatusPagamentos" height="170"></canvas></div>
+      <div class="financeiro-lista-box"><h2 id="tituloGraficoEmpresaPagamentos">Valores brutos por empresa (R$)</h2><canvas id="graficoEmpresaPagamentos" height="170"></canvas></div>
+    </section>
+
+    <section class="barra-filtros barra-filtros-financeiro pagamentos-filtros" aria-labelledby="tituloFiltrosPagamentos">
+      <div class="pagamentos-filtros-cabecalho">
+        <h2 id="tituloFiltrosPagamentos">Filtrar pagamentos</h2>
+        <button type="button" class="btn-limpar" onclick="limparFiltrosPagamentos()">Limpar filtros</button>
+      </div>
+      <div class="campo-busca-combinada">
+        <input id="filtroBuscaPagamentos" type="text" placeholder="Buscar..." oninput="filtrarPagamentos()">
+        <select id="campoBuscaPagamentos" class="campo-busca-filtro" onchange="atualizarCampoBuscaPagamentos();filtrarPagamentos()" aria-label="Campo da busca de pagamentos">
+          <option value="todos">Tudo</option>
+          <option value="razaoSocial">Raz&atilde;o social</option>
+          <option value="notaFiscal">Nota</option>
+          <option value="valorConta">Valor da conta</option>
+          <option value="valorLiquido">Valor líquido</option>
+          <option value="empresa">Empresa</option>
+          <option value="status">Status</option>
+          <option value="competencia">Compet&ecirc;ncia</option>
+        </select>
+      </div>
+      <select id="filtroCompetenciaPagamentos" onchange="filtrarPagamentos()"><option value="">Compet&ecirc;ncia</option></select>
+      <select id="filtroEmpresaPagamentos" onchange="filtrarPagamentos()"><option value="">Empresa</option></select>
+      <select id="filtroStatusPagamentos" onchange="filtrarPagamentos()"><option value="">Status</option></select>
+      <select id="filtroPagamentoPagamentos" onchange="filtrarPagamentos()"><option value="">Pagamento</option></select>
+      <select id="filtroVinculoContratoPagamentos" onchange="filtrarPagamentos()" aria-label="Filtrar vínculo com contrato"><option value="">Todos os vínculos</option><option value="com">Com contrato</option><option value="sem">Sem contrato</option></select>
+      <select id="filtroTipoDataPagamentos" onchange="atualizarTipoDataPagamentos();filtrarPagamentos()" aria-label="Pesquisar período por">
+        <option value="emissao">Data: emissão</option>
+        <option value="pagamento">Data: pagamento</option>
+      </select>
+      <label class="filtro-data">
+        <span class="filtro-data-ajuda"><span id="ajudaDataInicialPagamentos">Emissão inicial · dd/mm/aaaa</span> <span aria-hidden="true">📅</span></span>
+        <input id="filtroDataInicialPagamentos" type="date" onchange="filtrarPagamentos()" title="Data inicial de emissão da nota" aria-label="Data inicial de emissão da nota">
+      </label>
+      <label class="filtro-data">
+        <span class="filtro-data-ajuda"><span id="ajudaDataFinalPagamentos">Emissão final · dd/mm/aaaa</span> <span aria-hidden="true">📅</span></span>
+        <input id="filtroDataFinalPagamentos" type="date" onchange="filtrarPagamentos()" title="Data final de emissão da nota" aria-label="Data final de emissão da nota">
+      </label>
+    </section>
+
+    <section class="financeiro-lista-box pagamentos-tabela-box">
+      <div class="financeiro-lista-topo">
+        <div>
+          <div class="financeiro-titulo-ordenavel">
+            <h2>Pagamentos</h2>
+            <button type="button" class="btn-ordenar-os" id="ordenarPagamentos" onclick="alternarOrdenacaoPagamentos()" aria-pressed="true" title="Ordenado por n&uacute;mero da nota em ordem crescente">Nota &uarr;</button>
+            <button type="button" class="btn-ordenar-os" id="ordenarPagamentosEmissao" onclick="alternarOrdenacaoPagamentos('emissao')" aria-pressed="false" title="Ordenar por data de emiss&atilde;o em ordem crescente">Emiss&atilde;o</button>
+          </div>
+          <p>Controle independente de cobran&ccedil;as e confirma&ccedil;&otilde;es.</p>
+        </div>
+        <span class="financeiro-contador" id="contadorPagamentos">0</span>
+      </div>
+      <div class="barra-acoes-em-massa hidden" id="barraAcoesEmMassaPagamentos">
+        <strong id="contadorSelecaoPagamentos" aria-live="polite">0 selecionados</strong>
+        <select id="acaoEmMassaPagamentos" aria-label="Escolher ação para os pagamentos selecionados" onchange="prepararAcaoEmMassaPagamentos()">
+          <option value="">Escolher ação</option>
+          <option value="alterar_status">Alterar status</option>
+          <option value="alterar_situacao">Alterar situação do pagamento</option>
+          <option value="definir_data_pagamento">Definir data de pagamento</option>
+          <option value="adicionar_observacao">Adicionar observação</option>
+          <option value="exportar">Exportar selecionados</option>
+          <option value="enviar_lixeira">Enviar para a lixeira</option>
+        </select>
+        <button type="button" class="btn-acao-massa" id="selecionarVisiveisPagamentos" onclick="selecionarPagamentosVisiveis()">Selecionar visíveis</button>
+        <button type="button" class="btn-acao-massa" onclick="limparSelecaoPagamentos()">Limpar</button>
+        <button type="button" class="btn-acao-massa btn-acao-massa-sair" onclick="alternarModoSelecaoPagamentos()">Sair da seleção</button>
+      </div>
+      <div class="tabela-preview-planilha pagamentos-tabela-wrap">
+        <table class="tabela-pagamentos">
+          <thead>
+            <tr><th class="coluna-selecao-pagamento hidden" aria-label="Seleção"></th><th>Compet&ecirc;ncia</th><th>Raz&atilde;o social</th><th>Empresa</th><th>Esfera</th><th>Nota</th><th>Emiss&atilde;o</th><th>Valor conta</th><th>Valor l&iacute;quido</th><th>Status</th><th>Pagamento</th><th>Data pag.</th><th>A&ccedil;&otilde;es</th></tr>
+          </thead>
+          <tbody id="tabelaPagamentosAbertos"><tr><td colspan="13">Carregando...</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <div class="modal" id="modalPagamentoAberto">
+    <div class="modal-content modal-content-amplo modal-pagamento-content">
+      <div class="modal-header modal-pagamento-header">
+        <div>
+          <h2 id="tituloModalPagamento">Novo pagamento</h2>
+          <p id="subtituloModalPagamento">Registre a cobran&ccedil;a, confer&ecirc;ncia e baixa do pagamento.</p>
+        </div>
+        <span id="pagamentoModalEstado" class="pagamento-modal-estado pagamento-modal-aberto">Em aberto</span>
+        <button class="btn-fechar-modal" onclick="fecharModalPagamento()">&times;</button>
+      </div>
+      <form id="formPagamentoAberto" class="form-grid-financeiro form-pagamento-aberto" onsubmit="salvarPagamento(event)">
+        <input type="hidden" id="pagamentoId">
+        <section class="pagamento-form-section campo-largo">
+          <div class="pagamento-section-title">
+            <span>Identifica&ccedil;&atilde;o</span>
+            <small>Dados que localizam a cobran&ccedil;a na planilha e no financeiro.</small>
+          </div>
+          <div class="pagamento-form-grid">
+            <label>Compet&ecirc;ncia<input id="pagCompetencia" list="listaCompetenciasPagamento" placeholder="MAI/2026" required oninput="normalizarCompetenciaPagamento(); atualizarResumoModalPagamento();"></label>
+            <label class="pagamento-campo-destaque">Raz&atilde;o social<input id="pagRazaoSocial" list="listaRazoesPagamento" required></label>
+            <label>Empresa<input id="pagEmpresa" list="listaEmpresasPagamento"></label>
+            <label>Contrato vinculado<select id="pagContratoId" onchange="marcarContratoPagamentoManual()"><option value="">Sem contrato</option></select></label>
+            <small class="campo-largo">O valor da conta consome o saldo do contrato escolhido, mesmo antes da confirma&ccedil;&atilde;o. Sem contrato, n&atilde;o h&aacute; consumo.</small>
+            <label>Esfera<select id="pagEsfera"><option value=""></option><option>ESTADO</option><option>MUNICIPIO</option><option>FEDERAL</option><option>PRIVADO</option></select></label>
+            <label>Nota fiscal<input id="pagNotaFiscal" placeholder="NF 0000"></label>
+            <label>Emiss&atilde;o<input id="pagEmissao" type="date"></label>
+          </div>
+        </section>
+
+        <section class="pagamento-form-section campo-largo">
+          <div class="pagamento-section-title">
+            <span>Valores</span>
+            <small>Informe a conta e as reten&ccedil;&otilde;es ou ajuste o valor l&iacute;quido manualmente.</small>
+          </div>
+          <div class="pagamento-form-grid pagamento-valores-grid">
+            <label>Valor da conta<input id="pagValorConta" inputmode="decimal" placeholder="0,00" oninput="alterarValorContaPagamento()" onblur="formatarCampoMoedaPagamento(this)"></label>
+            <label>Valor l&iacute;quido<input id="pagValorLiquido" inputmode="decimal" placeholder="0,00" oninput="marcarLiquidoManualPagamento()" onblur="formatarCampoMoedaPagamento(this)"></label>
+            <div class="pagamento-resumo-modal" id="pagamentoResumoModal">
+              <div><span>Conta</span><strong id="pagResumoModalConta">R$ 0,00</strong></div>
+              <div><span>L&iacute;quido</span><strong id="pagResumoModalLiquido">R$ 0,00</strong></div>
+              <div><span>Diferen&ccedil;a</span><strong id="pagResumoModalRetencao">R$ 0,00</strong></div>
+            </div>
+            <div class="pagamento-retencoes">
+              <div class="pagamento-retencoes-cabecalho"><strong>Impostos retidos</strong><small>Percentuais sobre o Valor da conta. Deixe em branco quando n&atilde;o houver informa&ccedil;&atilde;o.</small></div>
+              <div class="pagamento-retencoes-grid">
+                <label>ISS (%)<input id="pagAliquotaIss" inputmode="decimal" placeholder="0,00" oninput="alterarAliquotaPagamento()" onblur="formatarAliquotaPagamento(this)"><small id="pagValorIss">R$ 0,00</small></label>
+                <label>IR (%)<input id="pagAliquotaIr" inputmode="decimal" placeholder="0,00" oninput="alterarAliquotaPagamento()" onblur="formatarAliquotaPagamento(this)"><small id="pagValorIr">R$ 0,00</small></label>
+                <label>CSLL (%)<input id="pagAliquotaCsll" inputmode="decimal" placeholder="0,00" oninput="alterarAliquotaPagamento()" onblur="formatarAliquotaPagamento(this)"><small id="pagValorCsll">R$ 0,00</small></label>
+                <label>INSS (%)<input id="pagAliquotaInss" inputmode="decimal" placeholder="0,00" oninput="alterarAliquotaPagamento()" onblur="formatarAliquotaPagamento(this)"><small id="pagValorInss">R$ 0,00</small></label>
+              </div>
+              <div class="pagamento-retencoes-rodape"><span id="pagRetencoesStatus" role="status" aria-live="polite">Valor l&iacute;quido manual.</span><button type="button" class="btn-acao-massa" onclick="recalcularLiquidoPagamento()">Recalcular l&iacute;quido</button></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="pagamento-form-section campo-largo">
+          <div class="pagamento-section-title">
+            <span>Situa&ccedil;&atilde;o</span>
+            <small>Acompanhe se a cobran&ccedil;a est&aacute; apta, em an&aacute;lise ou j&aacute; confirmada.</small>
+          </div>
+          <div class="pagamento-form-grid">
+            <label>Status<select id="pagStatus" onchange="atualizarResumoModalPagamento()"><option value=""></option><option>APTO</option><option value="EM ANALISE">EM ANÁLISE</option><option>PENDENTE</option><option>GLOSA</option><option>CANCELADO</option></select></label>
+            <label>Pagamento<select id="pagPagamento" onchange="atualizarResumoModalPagamento()"><option value="">EM ABERTO</option><option>CONFIRMADO</option><option>AGENDADO</option><option>PARCIAL</option></select></label>
+            <label>Data de pagamento<input id="pagDataPagamento" type="date" onchange="atualizarResumoModalPagamento()"></label>
+            <label class="campo-largo">Observa&ccedil;&otilde;es<textarea id="pagObservacoes" rows="3" placeholder="Anote pend&ecirc;ncias, previs&atilde;o ou confer&ecirc;ncia documental."></textarea></label>
+          </div>
+        </section>
+        <datalist id="listaCompetenciasPagamento"></datalist>
+        <datalist id="listaRazoesPagamento"></datalist>
+        <datalist id="listaEmpresasPagamento"></datalist>
+        <div class="modal-acoes campo-largo"><div class="modal-status" id="statusPagamentoAberto" role="status" aria-live="polite"></div><button type="button" class="btn-form btn-cancelar" onclick="fecharModalPagamento()">Cancelar</button><button class="btn-form btn-salvar" type="submit">Salvar</button></div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal" id="modalImportacaoPagamentos">
+    <div class="modal-content modal-content-amplo">
+      <div class="modal-header"><h2>Importar pagamentos e impostos</h2><button class="btn-fechar-modal" onclick="fecharModalImportacaoPagamentos()">&times;</button></div>
+      <div class="form-grid-financeiro">
+        <div class="campo-largo"><a class="btn-form btn-cancelar" id="baixarModeloImportacaoPagamentos" href="modelos/MODELO-IMPORTACAO-PAGAMENTOS-IMPOSTOS.xlsx?v=20261013" download="MODELO-IMPORTACAO-PAGAMENTOS-IMPOSTOS.xlsx">Baixar modelo com impostos</a></div>
+        <small class="campo-largo">Preencha a aba <strong>GERAL</strong>. O modelo inclui instruções e exemplos em abas separadas. Para atualizar pagamentos existentes, exporte os registros e mantenha os demais dados preenchidos, inclusive competência, razão social, empresa, esfera, nota fiscal e emissão.</small>
+        <small class="campo-largo"><strong>ISS, IR, CSLL e INSS (%):</strong> digite o percentual, como 5 ou 1,5. Zero significa 0%; célula vazia significa sem informação e remove a alíquota anterior ao atualizar. Se a coluna inteira estiver ausente, a alíquota já cadastrada será mantida.</small>
+        <small class="campo-largo"><strong>Tipo do líquido:</strong> use AUTOMÁTICO quando o Valor líquido informado for igual ao bruto menos os quatro impostos, arredondados individualmente em centavos; use MANUAL para informar um líquido diferente. Preencha o Valor líquido nos dois casos.</small>
+        <label class="campo-largo">Planilha Excel<input id="arquivoImportacaoPagamentos" type="file" onchange="invalidarAnaliseImportacaoPagamentos()" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></label>
+        <small class="campo-largo">Para vincular pagamentos em lote, exporte os registros desejados, preencha a coluna “Contrato Nº” na aba GERAL e importe novamente. Sem n&uacute;mero, s&oacute; h&aacute; v&iacute;nculo autom&aacute;tico quando existe um &uacute;nico contrato com o mesmo nome da raz&atilde;o social.</small>
+        <div class="modal-acoes campo-largo"><div class="modal-status" id="statusImportacaoPagamentos" role="status" aria-live="polite"></div><button class="btn-form btn-cancelar" onclick="fecharModalImportacaoPagamentos()">Cancelar</button><button class="btn-form btn-salvar" onclick="analisarImportacaoPagamentos()">Analisar</button></div>
+      </div>
+      <div id="resultadoImportacaoPagamentos" class="importacao-dashboard-resultado hidden">
+        <div class="importacao-dashboard-grid">
+          <div class="resumo-planilha"><span>V&aacute;lidos</span><strong id="impPagValidos">0</strong></div>
+          <div class="resumo-planilha"><span>Criar</span><strong id="impPagCriar">0</strong></div>
+          <div class="resumo-planilha"><span>Atualizar</span><strong id="impPagAtualizar">0</strong></div>
+          <div class="resumo-planilha"><span>Ignoradas</span><strong id="impPagIgnoradas">0</strong></div>
+          <div class="resumo-planilha"><span>Valor l&iacute;quido</span><strong id="impPagValor">R$ 0,00</strong></div>
+        </div>
+        <div class="importacao-dashboard-alertas" id="impPagAvisos"></div>
+        <p id="impPagPreviewInfo" role="status" aria-live="polite"></p>
+        <p><small>Confira os impostos antes de confirmar. “Manter atual” indica uma coluna ausente; “Não informado” em coluna presente limpa a alíquota cadastrada. Sem Tipo do líquido: novos usam Manual; atualizações mantêm Automático somente se o líquido conferir com os impostos.</small></p>
+        <div class="tabela-preview-planilha" id="impPagPreview"></div>
+        <div class="modal-acoes"><button class="btn-form btn-salvar" id="btnConfirmarImportacaoPagamentos" onclick="confirmarImportacaoPagamentos()">Confirmar importa&ccedil;&atilde;o</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="modalExportacaoPagamentos">
+    <div class="modal-content modal-grande">
+      <div class="modal-header"><h2>Exportar pagamentos</h2><button class="btn-fechar-modal" onclick="fecharModalExportacaoPagamentos()">&times;</button></div>
+      <p class="texto-modal-info">
+        Escolha quais pagamentos entram na planilha e a ordem do arquivo.
+      </p>
+      <h3 class="subtitulo-modal-planilha">Ordenar por</h3>
+      <div class="opcoes-planilha">
+        <label class="opcao-planilha" for="ordenacaoExportacaoPagamentosSecretaria">
+          <input id="ordenacaoExportacaoPagamentosSecretaria" type="radio" name="ordenacaoExportacaoPagamentos" value="secretaria" checked>
+          <span>Secretaria/Raz&atilde;o social</span>
+        </label>
+        <label class="opcao-planilha" for="ordenacaoExportacaoPagamentosMes">
+          <input id="ordenacaoExportacaoPagamentosMes" type="radio" name="ordenacaoExportacaoPagamentos" value="mes">
+          <span>M&ecirc;s/Ano</span>
+        </label>
+      </div>
+      <h3 class="subtitulo-modal-planilha">Pagamentos</h3>
+      <div class="opcoes-planilha">
+        <label class="opcao-planilha" for="modoExportacaoPagamentosTodos">
+          <input id="modoExportacaoPagamentosTodos" type="radio" name="modoExportacaoPagamentos" value="todos" checked onchange="atualizarModoExportacaoPagamentos()">
+          <span>Todos os pagamentos</span>
+        </label>
+        <label class="opcao-planilha" for="modoExportacaoPagamentosFiltros">
+          <input id="modoExportacaoPagamentosFiltros" type="radio" name="modoExportacaoPagamentos" value="filtros" onchange="atualizarModoExportacaoPagamentos()">
+          <span>Usar filtros atuais</span>
+        </label>
+        <label class="opcao-planilha" for="modoExportacaoPagamentosAbertos">
+          <input id="modoExportacaoPagamentosAbertos" type="radio" name="modoExportacaoPagamentos" value="abertos" onchange="atualizarModoExportacaoPagamentos()">
+          <span>Somente em aberto</span>
+        </label>
+        <label class="opcao-planilha" for="modoExportacaoPagamentosConfirmados">
+          <input id="modoExportacaoPagamentosConfirmados" type="radio" name="modoExportacaoPagamentos" value="confirmados" onchange="atualizarModoExportacaoPagamentos()">
+          <span>Somente confirmados</span>
+        </label>
+        <label class="opcao-planilha" for="modoExportacaoPagamentosClientes">
+          <input id="modoExportacaoPagamentosClientes" type="radio" name="modoExportacaoPagamentos" value="clientes" onchange="atualizarModoExportacaoPagamentos()">
+          <span>Clientes espec&iacute;ficos</span>
+        </label>
+      </div>
+      <div class="bloco-planilha hidden" id="blocoExportacaoPagamentosClientes">
+        <p class="texto-planilha-ajuda">
+          Escolha as raz&otilde;es sociais que entrar&atilde;o na planilha de pagamentos.
+        </p>
+        <div class="acoes-lista-planilha">
+          <button class="btn-form btn-cancelar" onclick="selecionarTodosClientesExportacaoPagamentos()">Selecionar todos</button>
+          <button class="btn-form btn-cancelar" onclick="limparSelecaoClientesExportacaoPagamentos()">Limpar sele&ccedil;&atilde;o</button>
+        </div>
+        <div class="resumo-planilha" id="resumoSelecaoClientesExportacaoPagamentos">0 clientes marcados.</div>
+        <div id="listaClientesExportacaoPagamentos" class="lista-os-planilha"></div>
+      </div>
+      <div class="modal-acoes">
+        <div class="modal-status" id="statusExportacaoPagamentos" role="status" aria-live="polite"></div>
+        <button class="btn-form btn-cancelar" onclick="fecharModalExportacaoPagamentos()">Cancelar</button>
+        <button class="btn-form btn-salvar" onclick="exportarPlanilhaPagamentos()">Exportar planilha</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="modalAcoesEmMassaPagamentos" role="dialog" aria-modal="true" aria-labelledby="tituloAcoesEmMassaPagamentos">
+    <div class="modal-content modal-media modal-acoes-em-massa">
+      <div class="modal-header">
+        <div><h2 id="tituloAcoesEmMassaPagamentos">Ação nos pagamentos selecionados</h2><p id="resumoAcoesEmMassaPagamentos">Revise antes de continuar.</p></div>
+        <button class="btn-fechar-modal" onclick="fecharModalAcoesEmMassaPagamentos()">&times;</button>
+      </div>
+      <div class="form-grid-financeiro">
+        <label id="campoStatusAcoesEmMassaPagamentos" class="campo-largo">Novo status
+          <select id="statusAcoesEmMassaPagamentos"><option value="">Selecione</option><option>APTO</option><option value="EM ANALISE">EM ANÁLISE</option><option>PENDENTE</option><option>GLOSA</option><option>CANCELADO</option></select>
+        </label>
+        <label id="campoSituacaoAcoesEmMassaPagamentos" class="campo-largo hidden">Nova situação
+          <select id="situacaoAcoesEmMassaPagamentos" onchange="atualizarCamposAcoesEmMassaPagamentos()"><option value="">Selecione</option><option>EM ABERTO</option><option>AGENDADO</option><option>PARCIAL</option><option>CONFIRMADO</option></select>
+        </label>
+        <label id="campoDataAcoesEmMassaPagamentos" class="campo-largo hidden">Data de pagamento
+          <input id="dataAcoesEmMassaPagamentos" type="date">
+        </label>
+        <label id="campoObservacaoAcoesEmMassaPagamentos" class="campo-largo hidden">Observação que será acrescentada
+          <textarea id="observacaoAcoesEmMassaPagamentos" rows="4" maxlength="2000"></textarea>
+        </label>
+        <label class="campo-largo">Motivo ou referência do lote
+          <input id="motivoAcoesEmMassaPagamentos" maxlength="500" placeholder="Opcional">
+        </label>
+        <label id="campoConfirmacaoDestrutivaAcoesEmMassaPagamentos" class="campo-largo hidden">Confirmação de segurança
+          <span class="ajuda-confirmacao-destrutiva" id="ajudaConfirmacaoDestrutivaAcoesEmMassaPagamentos">Digite a confirmação exibida após a análise.</span>
+          <input id="confirmacaoDestrutivaAcoesEmMassaPagamentos" autocomplete="off" aria-describedby="ajudaConfirmacaoDestrutivaAcoesEmMassaPagamentos">
+        </label>
+      </div>
+      <div id="previewAcoesEmMassaPagamentos" class="preview-acoes-em-massa" aria-live="polite"></div>
+      <div id="statusAcoesEmMassaPagamentosMsg" class="modal-status" role="status" aria-live="polite"></div>
+      <div class="modal-acoes">
+        <button type="button" class="btn-form btn-cancelar" onclick="fecharModalAcoesEmMassaPagamentos()">Cancelar</button>
+        <button type="button" class="btn-form btn-salvar" id="confirmarAcaoEmMassaPagamentos" onclick="analisarAcaoEmMassaPagamentos()">Analisar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="modalLixeiraPagamentos" role="dialog" aria-modal="true" aria-labelledby="tituloLixeiraPagamentos">
+    <div class="modal-content modal-media modal-lixeira">
+      <div class="modal-header">
+        <div><h2 id="tituloLixeiraPagamentos">Lixeira de pagamentos</h2><p>Registros excluídos continuam preservados e podem ser restaurados.</p></div>
+        <button type="button" class="btn-fechar-modal" onclick="fecharLixeiraPagamentos()" aria-label="Fechar lixeira">&times;</button>
+      </div>
+      <div class="lixeira-toolbar">
+        <strong id="contadorLixeiraPagamentos" aria-live="polite">0 registros</strong>
+        <button type="button" class="btn-acao-massa" onclick="selecionarTodosLixeiraPagamentos()">Selecionar todos</button>
+      </div>
+      <div id="listaLixeiraPagamentos" class="lista-lixeira" aria-live="polite"></div>
+      <div id="statusLixeiraPagamentos" class="modal-status" role="status" aria-live="polite"></div>
+      <div class="modal-acoes">
+        <button type="button" class="btn-form btn-cancelar" onclick="fecharLixeiraPagamentos()">Fechar</button>
+        <button type="button" class="btn-form btn-salvar" id="btnRestaurarLixeiraPagamentos" onclick="restaurarSelecionadosLixeiraPagamentos()">Restaurar selecionados</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="navegacao.js?v=20260928-revisao-textos"></script>
+  
+  <script src="pagamentos-abertos.js?v=20261112-busca-valor-conta"></script>
+</body>
+</html>
+

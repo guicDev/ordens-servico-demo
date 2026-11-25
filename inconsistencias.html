@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inconsist&ecirc;ncias</title>
+  <link rel="stylesheet" href="style.css?v=20260928-mobile-layout">
+  <script src="vendor/exceljs.min.js"></script>
+  <script src="vendor/pdfkit.standalone.js"></script>
+  <script src="retencoes-pagamentos.js"></script>
+  <script src="demo-regras-os.js"></script>
+  <script src="demo-relatorios.js"></script>
+  <script src="demo-inconsistencias.js"></script>
+  <script src="demo-engine.js"></script>
+  <script src="demo-adapter.js"></script>
+  <link rel="stylesheet" href="demo-ui.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-esquerda">
+      <div class="topbar-brand">
+        <img src="assets/identidade.svg" alt="Identidade da demonstração" class="topbar-logo" role="button" tabindex="0" title="Abrir menu principal" aria-label="Abrir menu principal" onclick="abrirMenuLateral()">
+        <div class="topbar-brand-texto">
+          <span class="topbar-subtitulo">Sistema interno de gest&atilde;o</span>
+          <h1>Inconsist&ecirc;ncias</h1>
+        </div>
+      </div>
+    </div>
+    <div class="topbar-acoes">
+      <div class="usuario-logado-box">
+        <span class="usuario-logado-label">Logado como</span>
+        <strong id="usuarioLogadoNome">-</strong>
+      </div>
+      <button class="btn-topo btn-secundario" onclick="carregarInconsistencias()">Atualizar</button>
+    </div>
+  </header>
+
+  <main class="container-principal financeiro-page inconsistencias-page">
+    <section class="cards-resumo cards-resumo-financeiro inconsistencias-resumo" aria-label="Resumo das inconsist&ecirc;ncias">
+      <div class="resumo-card"><span class="resumo-label">Total</span><strong id="incResumoTotal">0</strong></div>
+      <div class="resumo-card"><span class="resumo-label">N&uacute;meros pulados</span><strong id="incResumoPulados">0</strong></div>
+      <div class="resumo-card"><span class="resumo-label">Ano suspeito</span><strong id="incResumoAno">0</strong></div>
+      <div class="resumo-card"><span class="resumo-label">N&uacute;mero inv&aacute;lido</span><strong id="incResumoNumero">0</strong></div>
+      <div class="resumo-card"><span class="resumo-label">Sem precifica&ccedil;&atilde;o</span><strong id="incResumoSemPrecificacao">0</strong></div>
+      <div class="resumo-card"><span class="resumo-label">Materiais sem itens</span><strong id="incResumoMateriaisItens">0</strong></div>
+    </section>
+
+    <section class="barra-filtros barra-filtros-financeiro inconsistencias-filtros">
+      <div class="campo-busca-combinada">
+        <input id="buscaInconsistencias" type="text" placeholder="Buscar OS, evento ou solicitante..." oninput="filtrarInconsistencias()">
+        <select id="campoBuscaInconsistencias" class="campo-busca-filtro" onchange="filtrarInconsistencias()" aria-label="Campo da busca de inconsist&ecirc;ncias">
+          <option value="todos">Tudo</option>
+          <option value="numeroOS">OS</option>
+          <option value="evento">Evento</option>
+          <option value="solicitante">Solicitante</option>
+          <option value="motivo">Motivo</option>
+        </select>
+      </div>
+      <select id="filtroAnoInconsistencias" onchange="filtrarInconsistencias()">
+        <option value="">Todos os anos</option>
+      </select>
+      <select id="filtroTipoInconsistencias" onchange="filtrarInconsistencias()">
+        <option value="">Todos os tipos</option>
+      </select>
+      <select id="filtroStatusInconsistencias" onchange="filtrarInconsistencias()">
+        <option value="">Todos os status</option>
+      </select>
+      <button class="btn-limpar" onclick="limparFiltrosInconsistencias()">Limpar</button>
+    </section>
+
+    <section class="financeiro-lista-box inconsistencias-intro">
+      <div class="financeiro-lista-topo">
+        <div>
+          <h2>Relat&oacute;rio somente leitura</h2>
+          <p>Problemas estruturais encontrados no banco antes de virarem erro operacional.</p>
+        </div>
+        <span class="financeiro-contador" id="contadorInconsistencias">0</span>
+      </div>
+      <div class="inconsistencias-meta" id="inconsistenciasMeta">Carregando...</div>
+    </section>
+
+    <section id="listaInconsistencias" class="inconsistencias-lista">
+      <div class="financeiro-lista-box">
+        <div class="financeiro-vazio">Carregando inconsist&ecirc;ncias...</div>
+      </div>
+    </section>
+  </main>
+
+  <script src="navegacao.js?v=20260928-revisao-textos"></script>
+  <script src="inconsistencias.js?v=20260716-inconsistencias"></script>
+</body>
+</html>

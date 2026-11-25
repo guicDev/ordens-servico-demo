@@ -1,31 +1,694 @@
-<!doctype html>
-<html lang="pt-BR">
+<!DOCTYPE html>
+<html lang="pt-br">
+
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Demonstração interativa de gestão de eventos, ordens de serviço, contratos, estoque e pagamentos com dados fictícios.">
-  <meta name="color-scheme" content="light dark">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:">
-  <title>Ordens de Serviço — Demonstração</title>
-  <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="demo.css">
-  <script src="core.js" defer></script>
-  <script src="app.js" defer></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard OS Eventos</title>
+  <link rel="stylesheet" href="style.css?v=20261123-scroll-dashboard">
+  <script src="vendor/exceljs.min.js"></script>
+  <script src="vendor/pdfkit.standalone.js"></script>
+  <script src="retencoes-pagamentos.js"></script>
+  <script src="demo-regras-os.js"></script>
+  <script src="demo-relatorios.js"></script>
+  <script src="demo-inconsistencias.js"></script>
+  <script src="demo-engine.js"></script>
+  <script src="demo-adapter.js"></script>
+  <link rel="stylesheet" href="demo-ui.css">
 </head>
+
 <body>
   <header class="topbar">
-    <div class="topbar-brand"><div class="topbar-brand-texto"><span class="topbar-subtitulo">Demonstração interativa</span><h1>Ordens de Serviço</h1></div></div>
-    <div class="topbar-acoes"><button type="button" id="theme-button" class="btn-topo btn-secundario" aria-pressed="false">Tema escuro</button><button type="button" id="reset-button" class="btn-topo btn-secundario">Restaurar demonstração</button></div>
+    <div class="topbar-esquerda">
+      <div class="topbar-brand">
+        <img src="assets/identidade.svg" alt="Identidade da demonstração" class="topbar-logo" role="button" tabindex="0" title="Abrir menu principal" aria-label="Abrir menu principal" onclick="abrirMenuLateral()">
+        <div class="topbar-brand-texto">
+          <span class="topbar-subtitulo">Sistema interno de gest&atilde;o</span>
+          <h1>Dashboard de OS de Eventos</h1>
+        </div>
+      </div>
+    </div>
+
+    <div class="topbar-acoes">
+      <div class="usuario-logado-box">
+        <span class="usuario-logado-label">Logado como</span>
+        <strong id="usuarioLogadoNome">-</strong>
+      </div>
+
+      <button class="btn-topo btn-secundario" onclick="abrirModalPlanilhaPersonalizada()">
+        Gerar planilha personalizada
+      </button>
+
+      <button class="btn-topo btn-secundario" onclick="abrirModalImportacaoDashboard()">
+        Importar OS
+      </button>
+
+      <button class="btn-topo btn-primario" onclick="abrirModal()">
+        + Nova OS
+      </button>
+
+      <button type="button" class="btn-topo btn-secundario" id="btnSelecionarOS" onclick="alternarModoSelecaoOS()" aria-pressed="false">
+        Selecionar
+      </button>
+
+      <button type="button" class="btn-topo btn-secundario" id="btnLixeiraOS" onclick="abrirLixeiraOS()">
+        Lixeira
+      </button>
+    </div>
   </header>
-  <div class="demo-banner">Todos os dados são fictícios. Alterações ficam neste navegador. Não informe dados reais.</div>
-  <nav class="app-nav" aria-label="Menu principal">
-    <a href="#dashboard" data-page="dashboard">Visão geral</a><a href="#ordens" data-page="ordens">Ordens de serviço</a><a href="#financeiro" data-page="financeiro">Financeiro</a><a href="#contratos" data-page="contratos">Contratos</a><a href="#estoque" data-page="estoque">Estoque</a><a href="#historico" data-page="historico">Histórico</a>
-  </nav>
-  <main id="main" class="container-principal" tabindex="-1"></main>
-  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
-  <dialog id="modal" aria-labelledby="modal-title"><div class="modal-header"><h2 id="modal-title"></h2><button type="button" data-action="close" class="icon-button" aria-label="Fechar formulário">×</button></div><div id="modal-content"></div></dialog>
-  <section id="print-area" aria-hidden="true"></section>
-  <footer>Demonstração pública · Sem conexão com sistemas externos · Dados apenas no navegador</footer>
+
+  <main class="container-principal">
+    <section class="cards-resumo">
+      <div class="resumo-card">
+        <span class="resumo-label">Pendentes</span>
+        <strong id="pendentes">0</strong>
+      </div>
+
+      <div class="resumo-card">
+        <span class="resumo-label">Autorizados</span>
+        <strong id="autorizados">0</strong>
+      </div>
+
+      <div class="resumo-card">
+        <span class="resumo-label">Em execu&ccedil;&atilde;o</span>
+        <strong id="execucao">0</strong>
+      </div>
+
+      <div class="resumo-card">
+        <span class="resumo-label">Na rua</span>
+        <strong id="naRua">0</strong>
+      </div>
+
+      <div class="resumo-card">
+        <span class="resumo-label">Executados</span>
+        <strong id="executados">0</strong>
+      </div>
+
+      <div class="resumo-card">
+        <span class="resumo-label">Recusados</span>
+        <strong id="recusados">0</strong>
+      </div>
+    </section>
+
+    <section class="barra-filtros">
+      <div class="campo-busca-combinada">
+        <input
+          type="text"
+          id="buscaGeral"
+          placeholder="Buscar..."
+          oninput="filtrarOS()"
+        >
+        <select id="campoBuscaFiltro" class="campo-busca-filtro" onchange="filtrarOS()" aria-label="Campo da busca">
+          <option value="todos">Tudo</option>
+          <option value="numeroOS">N&uacute;mero da OS</option>
+          <option value="nomeEvento">Nome do evento</option>
+          <option value="solicitante">Solicitante</option>
+          <option value="responsavelEvento">Respons&aacute;vel do evento</option>
+          <option value="localEvento">Local</option>
+          <option value="materiais">Materiais</option>
+        </select>
+      </div>
+
+      <select id="anoFiltro" class="ano-filtro-compacto" onchange="alterarAnoSelecionado()">
+        <option value="2026">2026</option>
+      </select>
+
+      <select id="filtroStatus" onchange="filtrarOS()">
+        <option value="">Todos os status</option>
+        <option value="pendente">Pendentes</option>
+        <option value="autorizado">Autorizados</option>
+        <option value="em_execucao">Em execu&ccedil;&atilde;o</option>
+        <option value="na_rua">Na rua</option>
+        <option value="executado">Executados</option>
+        <option value="recusado">Recusados</option>
+      </select>
+
+      <label class="filtro-data">
+        <span class="filtro-data-ajuda">Data inicial · dd/mm/aaaa <span aria-hidden="true">📅</span></span>
+        <input type="date" id="dataInicialFiltro" onchange="filtrarOS()" title="Data inicial">
+      </label>
+
+      <label class="filtro-data">
+        <span class="filtro-data-ajuda">Data final · dd/mm/aaaa <span aria-hidden="true">📅</span></span>
+        <input type="date" id="dataFinalFiltro" onchange="filtrarOS()" title="Data final">
+      </label>
+
+      <button class="btn-limpar" onclick="limparFiltros()">Limpar filtros</button>
+    </section>
+
+    <section class="layout-dashboard">
+      <div class="kanban-area">
+        <div class="kanban-toolbar">
+          <div class="barra-acoes-em-massa hidden" id="barraAcoesEmMassaOS">
+            <strong id="contadorSelecaoOS" aria-live="polite">0 selecionadas</strong>
+            <select id="acaoEmMassaOS" aria-label="Escolher ação para as OS selecionadas" onchange="prepararAcaoEmMassaOS()">
+              <option value="">Escolher ação</option>
+              <option value="alterar_status">Mover para outro status</option>
+              <option value="adicionar_observacao">Adicionar observação</option>
+              <option value="exportar">Exportar selecionadas</option>
+              <option value="enviar_lixeira">Enviar para a lixeira</option>
+            </select>
+            <button type="button" class="btn-acao-massa" onclick="selecionarOSVisiveis()">Selecionar visíveis</button>
+            <button type="button" class="btn-acao-massa" onclick="limparSelecaoOS()">Limpar</button>
+            <button type="button" class="btn-acao-massa btn-acao-massa-sair" onclick="alternarModoSelecaoOS()">Sair da seleção</button>
+          </div>
+          <button type="button" class="btn-toggle-lateral" id="btnTogglePainelLateral" aria-label="Esconder lateral direita" title="Esconder lateral direita">&rsaquo;</button>
+        </div>
+        <div class="kanban-board">
+          <div class="coluna coluna-pendente" id="pendente">
+            <div class="coluna-topo">
+              <div>
+                <h2>Eventos Pendentes</h2>
+                <p>Aguardando an&aacute;lise</p>
+              </div>
+              <div class="coluna-topo-acoes">
+                <button type="button" class="btn-ordenar-os" id="ordenar-pendente" onclick="alternarOrdenacaoDashboard('pendente')" title="Ordenar pendentes por número da OS">OS &uarr;</button>
+                <button type="button" class="btn-selecionar-coluna" id="selecionar-coluna-pendente" data-status="pendente" onclick="alternarSelecaoColuna('pendente')" aria-pressed="false">Marcar todos</button>
+                <span class="badge-coluna" id="badge-pendente">0</span>
+              </div>
+            </div>
+            <div class="cards"></div>
+          </div>
+
+          <div class="coluna coluna-autorizado" id="autorizado">
+            <div class="coluna-topo">
+              <div>
+                <h2>Eventos Autorizados</h2>
+                <p>Liberados para andamento</p>
+              </div>
+              <div class="coluna-topo-acoes">
+                <button type="button" class="btn-ordenar-os" id="ordenar-autorizado" onclick="alternarOrdenacaoDashboard('autorizado')" title="Ordenar autorizados por número da OS">OS &uarr;</button>
+                <button type="button" class="btn-selecionar-coluna" id="selecionar-coluna-autorizado" data-status="autorizado" onclick="alternarSelecaoColuna('autorizado')" aria-pressed="false">Marcar todos</button>
+                <span class="badge-coluna" id="badge-autorizado">0</span>
+              </div>
+            </div>
+            <div class="cards"></div>
+          </div>
+
+          <div class="coluna coluna-execucao" id="em_execucao">
+            <div class="coluna-topo">
+              <div>
+                <h2>Em Execu&ccedil;&atilde;o</h2>
+                <p>Equipe em opera&ccedil;&atilde;o</p>
+              </div>
+              <div class="coluna-topo-acoes">
+                <button type="button" class="btn-ordenar-os" id="ordenar-em_execucao" onclick="alternarOrdenacaoDashboard('em_execucao')" title="Ordenar em execução por número da OS">OS &uarr;</button>
+                <button type="button" class="btn-selecionar-coluna" id="selecionar-coluna-em_execucao" data-status="em_execucao" onclick="alternarSelecaoColuna('em_execucao')" aria-pressed="false">Marcar todos</button>
+                <span class="badge-coluna" id="badge-em_execucao">0</span>
+              </div>
+            </div>
+            <div class="cards"></div>
+          </div>
+
+          <div class="coluna coluna-na-rua" id="na_rua">
+            <div class="coluna-topo">
+              <div>
+                <h2>Na rua</h2>
+                <p>Fora do galp&atilde;o</p>
+              </div>
+              <div class="coluna-topo-acoes">
+                <button type="button" class="btn-ordenar-os" id="ordenar-na_rua" onclick="alternarOrdenacaoDashboard('na_rua')" title="Ordenar na rua por n&uacute;mero da OS">OS &uarr;</button>
+                <button type="button" class="btn-selecionar-coluna" id="selecionar-coluna-na_rua" data-status="na_rua" onclick="alternarSelecaoColuna('na_rua')" aria-pressed="false">Marcar todos</button>
+                <span class="badge-coluna" id="badge-na_rua">0</span>
+              </div>
+            </div>
+            <div class="cards"></div>
+          </div>
+
+          <div class="coluna coluna-executado" id="executado">
+            <div class="coluna-topo">
+              <div>
+                <h2>Executados</h2>
+                <p>Eventos conclu&iacute;dos</p>
+              </div>
+              <div class="coluna-topo-acoes">
+                <button type="button" class="btn-ordenar-os" id="ordenar-executado" onclick="alternarOrdenacaoDashboard('executado')" title="Ordenar executados por número da OS">OS &uarr;</button>
+                <button type="button" class="btn-selecionar-coluna" id="selecionar-coluna-executado" data-status="executado" onclick="alternarSelecaoColuna('executado')" aria-pressed="false">Marcar todos</button>
+                <span class="badge-coluna" id="badge-executado">0</span>
+              </div>
+            </div>
+            <div class="cards"></div>
+          </div>
+
+          <div class="coluna coluna-recusado" id="recusado">
+            <div class="coluna-topo">
+              <div>
+                <h2>Recusados</h2>
+                <p>N&atilde;o autorizados</p>
+              </div>
+              <div class="coluna-topo-acoes">
+                <button type="button" class="btn-ordenar-os" id="ordenar-recusado" onclick="alternarOrdenacaoDashboard('recusado')" title="Ordenar recusados por número da OS">OS &uarr;</button>
+                <button type="button" class="btn-selecionar-coluna" id="selecionar-coluna-recusado" data-status="recusado" onclick="alternarSelecaoColuna('recusado')" aria-pressed="false">Marcar todos</button>
+                <span class="badge-coluna" id="badge-recusado">0</span>
+              </div>
+            </div>
+            <div class="cards"></div>
+          </div>
+        </div>
+        <div class="kanban-scroll-fixo" id="kanbanScrollFixo" role="region" aria-label="Rolar colunas do dashboard" tabindex="0" hidden>
+          <div class="kanban-scroll-fixo-conteudo" aria-hidden="true"></div>
+        </div>
+      </div>
+
+      <aside class="painel-lateral">
+        <div class="painel-tabs" role="tablist" aria-label="Painel lateral">
+          <button type="button" class="painel-tab ativo" id="tabDetalhes" data-tab="detalhes" role="tab" aria-selected="true" aria-controls="painelDetalhes">
+            Detalhes da OS
+          </button>
+          <button type="button" class="painel-tab" id="tabHistorico" data-tab="historico" role="tab" aria-selected="false" aria-controls="painelHistorico">
+            &Uacute;ltimas altera&ccedil;&otilde;es
+          </button>
+        </div>
+
+        <div class="painel-box painel-box-tab ativo" id="painelDetalhes" data-tab-content="detalhes">
+          <div class="painel-cabecalho">
+            <h3>Detalhe r&aacute;pido da OS</h3>
+          </div>
+
+          <div class="painel-conteudo" id="conteudoPainelDetalhes">
+            <div id="detalhe-vazio" class="detalhe-vazio">
+            Selecione uma OS para visualizar os detalhes.
+          </div>
+
+          <div id="detalhe-os" class="detalhe-os hidden">
+            <div class="detalhe-tag" id="detalhe-numero">OS</div>
+            <h4 id="detalhe-evento">Nome do evento</h4>
+
+            <div class="detalhe-lista">
+              <p><strong>Solicitante:</strong> <span id="detalhe-solicitante">-</span></p>
+              <p><strong>Respons&aacute;vel do evento:</strong> <span id="detalhe-responsavel-evento">-</span></p>
+              <p><strong>Telefone:</strong> <span id="detalhe-telefone-evento">-</span></p>
+              <p><strong>Local:</strong> <span id="detalhe-local">-</span></p>
+              <p><strong>Per&iacute;odo:</strong> <span id="detalhe-periodo">-</span></p>
+              <p><strong>Hor&aacute;rio de in&iacute;cio:</strong> <span id="detalhe-horario-inicio">-</span></p>
+              <p><strong>Quantidade de di&aacute;rias:</strong> <span id="detalhe-quantidade-diarias">-</span></p>
+              <p><strong>OS do solicitante:</strong> <a id="detalhe-os-solicitante-link" href="#" target="_blank" rel="noopener" class="hidden">Abrir</a><span id="detalhe-os-solicitante-vazio"> - </span></p>
+              <p><strong>Status:</strong> <span id="detalhe-status">-</span></p>
+              <p><strong>Or&ccedil;amento:</strong> <span id="detalhe-orcamento">-</span></p>
+              <p><strong>Materiais:</strong> <span id="detalhe-materiais">-</span></p>
+              <p><strong>Observa&ccedil;&otilde;es:</strong> <span id="detalhe-observacoes">-</span></p>
+              <p><strong>Obs. aprova&ccedil;&atilde;o:</strong> <span id="detalhe-aprovacao">-</span></p>
+            </div>
+
+            <div class="detalhe-acoes">
+              <button class="btn-detalhe btn-primario" id="btnDetalheEditar">Editar</button>
+              <button class="btn-detalhe btn-secundario" id="btnDetalheMover">Mover</button>
+              <button class="btn-detalhe btn-secundario" id="btnDetalheImprimir">Imprimir</button>
+              <button class="btn-detalhe btn-secundario" id="btnDetalhePdf">Gerar PDF</button>
+              <button class="btn-detalhe btn-secundario" id="btnDetalheRelatorio">Baixar relatório fotográfico</button>
+            </div>
+          </div>
+          </div>
+        </div>
+
+        <div class="painel-box painel-box-tab" id="painelHistorico" data-tab-content="historico">
+          <div class="painel-cabecalho">
+            <h3>&Uacute;ltimas altera&ccedil;&otilde;es</h3>
+          </div>
+
+          <div class="painel-conteudo" id="conteudoPainelHistorico">
+            <div id="listaHistorico" class="historico-lista">
+            <div class="historico-item">Nenhuma altera&ccedil;&atilde;o registrada.</div>
+          </div>
+          </div>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <div class="modal" id="modalRelatorioFotografico" aria-hidden="true">
+    <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="tituloModalRelatorioFotografico">
+      <div class="modal-header">
+        <h2 id="tituloModalRelatorioFotografico">Escolha o relatório fotográfico</h2>
+        <button class="btn-fechar-modal" type="button" id="btnFecharModalRelatorioFotografico" aria-label="Fechar">&times;</button>
+      </div>
+      <p>Foi encontrado mais de um relatório compatível. Selecione o documento correto.</p>
+      <div id="listaRelatoriosFotograficos" class="relatorio-fotografico-candidatos"></div>
+    </div>
+  </div>
+
+  <div class="modal" id="modal">
+    <div class="modal-content modal-grande">
+      <div class="modal-header">
+        <h2 id="tituloModal">Nova OS</h2>
+        <button class="btn-fechar-modal" onclick="fecharModal()">&times;</button>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="numeroOS">N&uacute;mero da OS</label>
+          <input id="numeroOS" placeholder="Ex: OS-00124">
+        </div>
+
+        <div class="form-group">
+          <label for="solicitante">Solicitante</label>
+          <input id="solicitante" list="listaSolicitantes" placeholder="Nome do solicitante" autocomplete="off">
+        </div>
+
+        <div class="form-group">
+          <label for="responsavelEvento">Respons&aacute;vel do Evento</label>
+          <input id="responsavelEvento" placeholder="Nome do respons&aacute;vel do evento">
+        </div>
+
+        <div class="form-group">
+          <label for="telefoneEvento">Telefone</label>
+          <input id="telefoneEvento" inputmode="tel" placeholder="Ex: (92) 99999-9999">
+        </div>
+
+        <div class="form-group">
+          <label for="localEvento">Local do Evento</label>
+          <input id="localEvento" placeholder="Local do evento">
+        </div>
+
+        <div class="form-group">
+          <label for="nomeEvento">Nome do Evento</label>
+          <input id="nomeEvento" placeholder="Nome do evento">
+        </div>
+
+        <div class="form-group">
+          <label for="dataInicioEvento">Data inicial do evento</label>
+          <input type="date" id="dataInicioEvento">
+        </div>
+
+        <div class="form-group">
+          <label for="dataFimEvento">Data final do evento</label>
+          <input type="date" id="dataFimEvento">
+        </div>
+
+        <div class="form-group">
+          <label for="horarioInicioEvento">Hor&aacute;rio de in&iacute;cio do evento</label>
+          <input type="time" id="horarioInicioEvento">
+        </div>
+
+        <div class="form-group">
+          <label for="quantidadeDiarias">Quantidade de di&aacute;rias</label>
+          <input type="number" id="quantidadeDiarias" min="0" step="1" inputmode="numeric" placeholder="Ex: 3">
+        </div>
+
+        <div class="form-group form-group-full">
+          <label for="periodoEvento">Per&iacute;odo do Evento</label>
+          <input id="periodoEvento" placeholder="Ex: 24/03/2026 a 25/03/2026">
+        </div>
+
+        <div class="form-group form-group-full">
+          <label for="materiais">Materiais</label>
+          <textarea id="materiais" placeholder="Descreva os materiais e quantidades"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="orcamento">Or&ccedil;amento</label>
+          <input id="orcamento" inputmode="numeric" placeholder="R$ 0,00" autocomplete="off">
+        </div>
+
+        <div class="form-group">
+          <label for="observacoes">Observa&ccedil;&otilde;es</label>
+          <textarea id="observacoes" placeholder="Observa&ccedil;&otilde;es gerais"></textarea>
+        </div>
+
+        <div class="form-group form-group-full">
+          <label for="osSolicitanteArquivo">OS do solicitante</label>
+          <input type="file" id="osSolicitanteArquivo">
+          <small id="arquivoSolicitanteAtual" style="display:block; margin-top:8px;">Nenhum arquivo anexado.</small>
+        </div>
+      </div>
+
+      <div class="botoes">
+        <div class="modal-status" id="statusFormularioOS" role="status" aria-live="polite"></div>
+        <button class="btn-form btn-cancelar" onclick="fecharModal()">Cancelar</button>
+        <button class="btn-form btn-salvar" onclick="salvarOS()">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="modalStatus">
+    <div class="modal-content modal-media">
+      <div class="modal-header">
+        <h2>Alterar Status</h2>
+        <button class="btn-fechar-modal" onclick="fecharModalStatus()">&times;</button>
+      </div>
+
+      <p id="textoStatus" class="texto-modal-info"></p>
+
+      <div class="form-group">
+        <label for="novoStatusSelect">Novo status</label>
+        <select id="novoStatusSelect">
+          <option value="pendente">Pendente</option>
+          <option value="autorizado">Autorizado</option>
+          <option value="em_execucao">Em execu&ccedil;&atilde;o</option>
+          <option value="na_rua">Na rua</option>
+          <option value="executado">Executado</option>
+          <option value="recusado">Recusado</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="observacaoStatus">Observa&ccedil;&atilde;o (opcional)</label>
+        <textarea id="observacaoStatus" placeholder="Digite a justificativa, se necess&aacute;rio..."></textarea>
+      </div>
+
+      <div class="botoes">
+        <div class="modal-status" id="statusMudancaStatus" role="status" aria-live="polite"></div>
+        <button class="btn-form btn-cancelar" onclick="fecharModalStatus()">Cancelar</button>
+        <button class="btn-form btn-salvar" onclick="confirmarMudancaStatus()">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="modalExclusao">
+    <div class="modal-content modal-media">
+      <div class="modal-header">
+        <h2>Excluir OS</h2>
+        <button class="btn-fechar-modal" onclick="fecharModalExclusao()">&times;</button>
+      </div>
+
+      <p id="textoExclusao" class="texto-modal-info"></p>
+
+      <div class="form-group">
+        <label for="motivoExclusao">Motivo da exclus&atilde;o (obrigat&oacute;rio)</label>
+        <textarea id="motivoExclusao" placeholder="Digite o motivo da exclus&atilde;o..."></textarea>
+      </div>
+
+      <div class="botoes">
+        <div class="modal-status" id="statusExclusaoOS" role="status" aria-live="polite"></div>
+        <button class="btn-form btn-cancelar" onclick="fecharModalExclusao()">Cancelar</button>
+        <button class="btn-form btn-excluir-confirmar" onclick="confirmarExclusao()">Excluir</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="modalPlanilha">
+    <div class="modal-content modal-grande">
+      <div class="modal-header">
+        <h2>Gerar planilha personalizada</h2>
+        <button class="btn-fechar-modal" onclick="fecharModalPlanilhaPersonalizada()">&times;</button>
+      </div>
+
+      <p class="texto-modal-info">
+        Primeiro escolha o recorte da planilha. Depois confirme o conte&uacute;do antes de gerar.
+      </p>
+
+      <div class="opcoes-planilha">
+        <label class="opcao-planilha" for="modoPlanilhaFiltradas">
+          <input id="modoPlanilhaFiltradas" type="radio" name="modoPlanilha" value="filtradas" checked onchange="atualizarModoPlanilhaPersonalizada()">
+          <span>OS vis&iacute;veis nos filtros atuais</span>
+        </label>
+
+        <label class="opcao-planilha" for="modoPlanilhaStatus">
+          <input id="modoPlanilhaStatus" type="radio" name="modoPlanilha" value="status" onchange="atualizarModoPlanilhaPersonalizada()">
+          <span>Todas as OS de um status</span>
+        </label>
+
+        <label class="opcao-planilha" for="modoPlanilhaEspecificas">
+          <input id="modoPlanilhaEspecificas" type="radio" name="modoPlanilha" value="especificas" onchange="atualizarModoPlanilhaPersonalizada()">
+          <span>Selecionar OS manualmente</span>
+        </label>
+
+      </div>
+
+      <div id="blocoPlanilhaFiltradas" class="bloco-planilha">
+        <p class="texto-planilha-ajuda">
+          A planilha ser&aacute; gerada com as OS que est&atilde;o aparecendo agora na tela.
+        </p>
+        <div class="resumo-planilha" id="resumoPlanilhaFiltradas">0 OS selecionadas pelos filtros atuais.</div>
+      </div>
+
+      <div id="blocoPlanilhaStatus" class="bloco-planilha hidden">
+        <div class="form-group">
+          <label for="statusPlanilhaSelect">Status desejado</label>
+          <select id="statusPlanilhaSelect">
+            <option value="pendente">Pendentes</option>
+            <option value="autorizado">Autorizadas</option>
+            <option value="em_execucao">Em execu&ccedil;&atilde;o</option>
+            <option value="na_rua">Na rua</option>
+            <option value="executado">Executadas</option>
+            <option value="recusado">Recusadas</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="blocoPlanilhaEspecificas" class="bloco-planilha hidden">
+        <div class="acoes-lista-planilha">
+          <button class="btn-form btn-cancelar" onclick="selecionarTodasOSPlanilha()">Selecionar todas</button>
+          <button class="btn-form btn-cancelar" onclick="selecionarOSFiltradasNaPlanilha()">Selecionar filtradas</button>
+          <button class="btn-form btn-cancelar" onclick="limparSelecaoOSPlanilha()">Limpar sele&ccedil;&atilde;o</button>
+        </div>
+
+        <div class="resumo-planilha" id="resumoSelecaoPlanilha">0 OS marcadas.</div>
+
+        <div class="lista-os-planilha" id="listaOSPlanilha"></div>
+      </div>
+
+      <div class="botoes">
+        <div class="modal-status" id="statusPlanilhaPersonalizada" role="status" aria-live="polite"></div>
+        <button class="btn-form btn-cancelar" onclick="fecharModalPlanilhaPersonalizada()">Cancelar</button>
+        <button class="btn-form btn-salvar" onclick="gerarPlanilhaPersonalizada()">Gerar planilha</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="modalImportacaoDashboard">
+    <div class="modal-content modal-grande">
+      <div class="modal-header">
+        <h2>Importar OS</h2>
+        <button class="btn-fechar-modal" onclick="fecharModalImportacaoDashboard()">&times;</button>
+      </div>
+
+      <p class="texto-modal-info">
+        Analise a planilha antes de importar. A confirma&ccedil;&atilde;o mostra quantas OS ser&atilde;o criadas ou atualizadas.
+      </p>
+
+      <div class="bloco-planilha">
+        <div class="form-group">
+          <label for="statusImportacaoDashboard">Status para importar</label>
+          <select id="statusImportacaoDashboard">
+            <option value="pendente">Pendente</option>
+            <option value="autorizado">Autorizado</option>
+            <option value="em_execucao">Em execu&ccedil;&atilde;o</option>
+            <option value="na_rua">Na rua</option>
+            <option value="executado" selected>Executado</option>
+            <option value="recusado">Recusado</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="arquivoImportacaoDashboard">Planilha Excel (.xlsx)</label>
+          <input id="arquivoImportacaoDashboard" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+        </div>
+
+        <div class="acoes-lista-planilha">
+          <button class="btn-form btn-cancelar" onclick="analisarImportacaoDashboard()">Analisar planilha</button>
+        </div>
+      </div>
+
+      <div id="resultadoImportacaoDashboard" class="importacao-dashboard-resultado hidden">
+        <div class="importacao-dashboard-grid">
+          <div class="resumo-planilha"><span>OS encontradas</span><strong id="impTotalOS">0</strong></div>
+          <div class="resumo-planilha"><span>OS novas</span><strong id="impCriar">0</strong></div>
+          <div class="resumo-planilha"><span>OS existentes</span><strong id="impAtualizar">0</strong></div>
+          <div class="resumo-planilha"><span>Itens/materiais</span><strong id="impItens">0</strong></div>
+          <div class="resumo-planilha"><span>Incompletas</span><strong id="impIncompletas">0</strong></div>
+          <div class="resumo-planilha"><span>Ignoradas</span><strong id="impIgnoradas">0</strong></div>
+        </div>
+
+        <div class="importacao-dashboard-alertas" id="impAvisos"></div>
+        <div class="resumo-planilha" id="impResumoLista">Lista completa da pr&eacute;-visualiza&ccedil;&atilde;o.</div>
+        <div class="lista-os-planilha" id="impListaPreview"></div>
+      </div>
+
+      <div class="botoes">
+        <div class="modal-status" id="statusImportacaoDashboardMsg" role="status" aria-live="polite"></div>
+        <button class="btn-form btn-cancelar" onclick="fecharModalImportacaoDashboard()">Cancelar</button>
+        <button class="btn-form btn-salvar" id="btnConfirmarImportacaoDashboard" onclick="confirmarImportacaoDashboard()" disabled>Confirmar importa&ccedil;&atilde;o</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalAcoesEmMassaOS" class="modal" role="dialog" aria-modal="true" aria-labelledby="tituloAcoesEmMassaOS">
+    <div class="modal-content modal-media modal-acoes-em-massa">
+      <div class="modal-header modal-acoes-em-massa-cabecalho">
+        <div>
+          <span class="modal-acoes-em-massa-etapa">Ação em massa</span>
+          <h2 id="tituloAcoesEmMassaOS">Ação nas OS selecionadas</h2>
+          <p id="descricaoAcaoEmMassaOS">Escolha os dados e confira a prévia antes de aplicar.</p>
+        </div>
+        <button type="button" class="btn-fechar-modal" onclick="fecharModalAcoesEmMassaOS()" aria-label="Fechar ação em massa">&times;</button>
+      </div>
+
+      <div class="resumo-selecao-modal">
+        <span>Seleção atual</span>
+        <strong id="resumoAcoesEmMassaOS">Revise a ação antes de continuar.</strong>
+      </div>
+
+      <div class="form-group" id="campoStatusAcoesEmMassaOS">
+        <label for="statusAcoesEmMassaOS">Novo status</label>
+        <select id="statusAcoesEmMassaOS">
+          <option value="">Selecione</option>
+          <option value="pendente">Pendente</option>
+          <option value="autorizado">Autorizado</option>
+          <option value="em_execucao">Em execução</option>
+          <option value="na_rua">Na rua</option>
+          <option value="executado">Executado</option>
+          <option value="recusado">Recusado</option>
+        </select>
+      </div>
+
+      <div class="form-group hidden campo-observacao-em-massa" id="campoObservacaoAcoesEmMassaOS">
+        <label for="observacaoAcoesEmMassaOS">Observação que será acrescentada</label>
+        <p class="ajuda-campo-em-massa" id="ajudaObservacaoAcoesEmMassaOS">O texto será adicionado ao histórico de cada OS, sem apagar observações existentes.</p>
+        <textarea id="observacaoAcoesEmMassaOS" rows="5" maxlength="2000" placeholder="Escreva uma observação objetiva para as OS selecionadas" aria-describedby="ajudaObservacaoAcoesEmMassaOS contadorObservacaoAcoesEmMassaOS"></textarea>
+        <span class="contador-observacao" id="contadorObservacaoAcoesEmMassaOS" aria-live="polite">0 de 2.000 caracteres</span>
+      </div>
+
+      <div class="form-group campo-referencia-em-massa">
+        <label for="motivoAcoesEmMassaOS">Motivo ou referência do lote</label>
+        <p class="ajuda-campo-em-massa">Ajuda a identificar esta operação posteriormente na auditoria.</p>
+        <input id="motivoAcoesEmMassaOS" type="text" maxlength="500" placeholder="Opcional">
+      </div>
+
+      <div class="form-group hidden" id="campoConfirmacaoDestrutivaAcoesEmMassaOS">
+        <label for="confirmacaoDestrutivaAcoesEmMassaOS">Confirmação de segurança</label>
+        <p class="ajuda-confirmacao-destrutiva" id="ajudaConfirmacaoDestrutivaAcoesEmMassaOS">Digite a confirmação exibida após a análise.</p>
+        <input id="confirmacaoDestrutivaAcoesEmMassaOS" type="text" autocomplete="off" aria-describedby="ajudaConfirmacaoDestrutivaAcoesEmMassaOS">
+      </div>
+
+      <div id="previewAcoesEmMassaOS" class="preview-acoes-em-massa" aria-live="polite"></div>
+      <div id="statusAcoesEmMassaOSMsg" class="modal-status" role="status" aria-live="polite"></div>
+
+      <div class="botoes modal-acoes-em-massa-rodape" id="rodapeAcoesEmMassaOS">
+        <button type="button" class="btn-form btn-cancelar" onclick="fecharModalAcoesEmMassaOS()">Cancelar</button>
+        <button type="button" class="btn-form btn-salvar" id="confirmarAcaoEmMassaOS" onclick="analisarAcaoEmMassaOS()">Analisar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalLixeiraOS" class="modal" role="dialog" aria-modal="true" aria-labelledby="tituloLixeiraOS">
+    <div class="modal-content modal-media modal-lixeira">
+      <div class="modal-header">
+        <div>
+          <h2 id="tituloLixeiraOS">Lixeira de OS</h2>
+          <p>Registros excluídos continuam preservados e podem ser restaurados.</p>
+        </div>
+        <button type="button" class="btn-fechar-modal" onclick="fecharLixeiraOS()" aria-label="Fechar lixeira">&times;</button>
+      </div>
+      <div class="lixeira-toolbar">
+        <strong id="contadorLixeiraOS" aria-live="polite">0 registros</strong>
+        <button type="button" class="btn-acao-massa" onclick="selecionarTodosLixeiraOS()">Selecionar todos</button>
+      </div>
+      <div id="listaLixeiraOS" class="lista-lixeira" aria-live="polite"></div>
+      <div id="statusLixeiraOS" class="modal-status" role="status" aria-live="polite"></div>
+      <div class="botoes">
+        <button type="button" class="btn-form btn-cancelar" onclick="fecharLixeiraOS()">Fechar</button>
+        <button type="button" class="btn-form btn-salvar" id="btnRestaurarLixeiraOS" onclick="restaurarSelecionadosLixeiraOS()">Restaurar selecionados</button>
+      </div>
+    </div>
+  </div>
+
+  <datalist id="listaSolicitantes"></datalist>
+
+  <script src="navegacao.js?v=20260928-revisao-textos"></script>
+  <script src="script.js?v=20261123-scroll-dashboard"></script>
 </body>
+
 </html>
+
+

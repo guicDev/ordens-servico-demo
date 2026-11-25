@@ -1,0 +1,9 @@
+#demo-controls { position:fixed; bottom:10px; left:12px; z-index:900; color:#334155; background:#fff; border:1px solid #cbd5e1; border-radius:9px; font:11px Arial,sans-serif; max-width:290px; box-shadow:0 3px 14px #0f172a22; }
+#demo-controls summary { cursor:pointer; padding:9px 12px; }
+#demo-controls>div { padding:0 12px 12px; display:flex; flex-direction:column; gap:9px; }
+#demo-controls p { line-height:1.4; margin:0; }
+#demo-controls label { display:flex; flex-direction:column; gap:5px; }
+#demo-controls select,#demo-controls button { padding:8px; border:1px solid #cbd5e1; background:#f8fafc; color:#334155; border-radius:6px; font:inherit; }
+#demo-controls button { cursor:pointer; }
+#demo-controls a { color:#1d4ed8; }
+@media print { #demo-controls { display:none; } }

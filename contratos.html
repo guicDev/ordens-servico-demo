@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Controle de Contratos</title>
+  <link rel="stylesheet" href="style.css?v=20261005-pagamentos-contratos-visual">
+  <script src="vendor/exceljs.min.js"></script>
+  <script src="vendor/pdfkit.standalone.js"></script>
+  <script src="retencoes-pagamentos.js"></script>
+  <script src="demo-regras-os.js"></script>
+  <script src="demo-relatorios.js"></script>
+  <script src="demo-inconsistencias.js"></script>
+  <script src="demo-engine.js"></script>
+  <script src="demo-adapter.js"></script>
+  <link rel="stylesheet" href="demo-ui.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-esquerda">
+      <div class="topbar-brand">
+        <img src="assets/identidade.svg" alt="Identidade da demonstração" class="topbar-logo" role="button" tabindex="0" title="Abrir menu principal" aria-label="Abrir menu principal" onclick="abrirMenuLateral()">
+        <div class="topbar-brand-texto">
+          <span class="topbar-subtitulo">Sistema interno de gestão</span>
+          <h1>Controle de Contratos</h1>
+        </div>
+      </div>
+    </div>
+    <div class="topbar-acoes">
+      <div class="usuario-logado-box">
+        <span class="usuario-logado-label">Logado como</span>
+        <strong id="usuarioLogadoNome">-</strong>
+      </div>
+      <button class="btn-topo btn-secundario" onclick="abrirModalImportacaoContratos()">Importar planilha</button>
+      <button class="btn-topo btn-secundario" onclick="abrirModalPlanilhaContratos()">Gerar planilha</button>
+    </div>
+  </header>
+
+  <main class="container-principal financeiro-page contratos-page">
+    <section class="cards-resumo cards-resumo-financeiro">
+      <div class="resumo-card resumo-card-moeda"><span class="resumo-label">Contratado</span><strong id="contrResumoGlobal">R$ 0,00</strong></div>
+      <div class="resumo-card resumo-card-moeda"><span class="resumo-label">Consumido</span><strong id="contrResumoConsumido">R$ 0,00</strong></div>
+      <div class="resumo-card resumo-card-moeda"><span class="resumo-label">Saldo</span><strong id="contrResumoSaldo">R$ 0,00</strong></div>
+      <div class="resumo-card"><span class="resumo-label">Vencidos</span><strong id="contrResumoVencidos">0</strong></div>
+      <div class="resumo-card"><span class="resumo-label">Prox. do vencimento</span><strong id="contrResumoProximos">0</strong></div>
+    </section>
+
+    <section class="barra-filtros barra-filtros-financeiro contratos-filtros">
+      <div class="campo-busca-combinada">
+        <input id="filtroBuscaContratos" type="text" placeholder="Buscar..." oninput="filtrarContratos()">
+        <select id="campoBuscaContratos" class="campo-busca-filtro" onchange="filtrarContratos()" aria-label="Campo da busca de contratos">
+          <option value="todos">Tudo</option>
+          <option value="orgao">Órgão</option>
+          <option value="numeroContrato">Contrato</option>
+          <option value="descricao">Descrição</option>
+          <option value="statusCalculado">Status</option>
+        </select>
+      </div>
+      <select id="filtroOrgaoContratos" onchange="filtrarContratos()"><option value="">Órgão</option></select>
+      <select id="filtroStatusContratos" onchange="filtrarContratos()">
+        <option value="">Status</option>
+        <option value="ATIVO">Ativo</option>
+        <option value="PROXIMO_VENCIMENTO">Próximo vencimento</option>
+        <option value="VENCIDO">Vencido</option>
+        <option value="SEM SALDO">Sem saldo</option>
+        <option value="INATIVO">Inativo</option>
+      </select>
+      <button class="btn-limpar" onclick="limparFiltrosContratos()">Limpar</button>
+    </section>
+
+    <section class="contratos-tabs">
+      <button class="painel-tab ativo" id="tabContratos" onclick="selecionarAbaContratos('contratos')">Contratos</button>
+      <button class="painel-tab" id="tabVencimentos" onclick="selecionarAbaContratos('vencimentos')">Vencimentos</button>
+    </section>
+
+    <section class="pagamentos-graficos">
+      <div class="financeiro-lista-box"><h2>Consumo por secretaria</h2><canvas id="graficoConsumoSecretaria" height="170"></canvas></div>
+      <div class="financeiro-lista-box"><h2>Saldo por secretaria</h2><canvas id="graficoSaldoSecretaria" height="170"></canvas></div>
+      <div class="financeiro-lista-box"><h2>Contratos por status</h2><canvas id="graficoStatusContratos" height="170"></canvas></div>
+    </section>
+
+    <section class="financeiro-lista-box">
+      <div class="financeiro-lista-topo">
+        <div>
+          <h2 id="tituloTabelaContratos">Contratos</h2>
+          <p id="subtituloTabelaContratos">Saldo calculado pelo valor da conta dos pagamentos vinculados.</p>
+        </div>
+        <span class="financeiro-contador" id="contadorContratos">0</span>
+      </div>
+      <div class="tabela-preview-planilha pagamentos-tabela-wrap">
+        <table class="tabela-pagamentos tabela-contratos">
+          <thead>
+            <tr><th>Órgão</th><th>Contrato</th><th>Descrição</th><th>Valor global</th><th>Consumido</th><th>Saldo</th><th>%</th><th>Pagamentos</th><th>Final</th><th>Status</th><th>Ações</th></tr>
+          </thead>
+          <tbody id="tabelaContratos"><tr><td colspan="11">Carregando...</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <div class="modal" id="modalDetalheContrato">
+    <div class="modal-content modal-content-amplo">
+      <div class="modal-header"><h2 id="tituloDetalheContrato">Contrato</h2><button class="btn-fechar-modal" onclick="fecharDetalheContrato()">&times;</button></div>
+      <div id="detalheContratoResumo" class="financeiro-dados-os"></div>
+      <div class="contratos-detalhe-topo">
+        <div>
+          <h3>Contratos do &oacute;rg&atilde;o</h3>
+          <p id="contratosDetalhadosSubtitulo">Contratos separados para edi&ccedil;&atilde;o e confer&ecirc;ncia.</p>
+        </div>
+        <button class="btn-form btn-salvar" onclick="abrirFormContratoDetalhado()">Novo contrato</button>
+      </div>
+      <div id="listaContratosDetalhados" class="contratos-detalhados-lista"></div>
+      <input id="arquivoAnexoContrato" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx" onchange="enviarAnexoContrato()" hidden>
+      <div class="modal-status" id="statusAnexoContrato" role="status" aria-live="polite"></div>
+      <h3>Histórico de consumo</h3>
+      <div class="tabela-preview-planilha">
+        <table>
+          <thead><tr><th>Emiss&atilde;o</th><th>Nota fiscal</th><th>Raz&atilde;o social</th><th>Valor da conta</th><th>Usu&aacute;rio</th><th>Lan&ccedil;amento</th></tr></thead>
+          <tbody id="detalheContratoConsumos"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="modalFormContratoDetalhado">
+    <div class="modal-content modal-grande contrato-form-modal">
+      <div class="modal-header"><h2 id="tituloFormContratoDetalhado">Contrato</h2><button class="btn-fechar-modal" onclick="fecharFormContratoDetalhado()">&times;</button></div>
+      <div class="form-grid-financeiro contrato-form-grid">
+        <input id="contratoDetalhadoId" type="hidden">
+        <label>&Oacute;rg&atilde;o<input id="contratoDetalhadoOrgao" autocomplete="off"></label>
+        <label>Contrato<input id="contratoDetalhadoNumero" autocomplete="off"></label>
+        <label class="campo-largo">Descri&ccedil;&atilde;o<input id="contratoDetalhadoDescricao" autocomplete="off"></label>
+        <label>Valor original<input id="contratoDetalhadoValorOriginal" type="number" min="0" step="0.01"></label>
+        <label>Aditivos<input id="contratoDetalhadoValorAditivos" type="number" min="0" step="0.01"></label>
+        <label>Valor global<input id="contratoDetalhadoValorGlobal" type="number" min="0" step="0.01"></label>
+        <label>In&iacute;cio<input id="contratoDetalhadoDataInicio" type="date"></label>
+        <label>Final<input id="contratoDetalhadoDataFinal" type="date"></label>
+        <label>Status manual<select id="contratoDetalhadoStatus"><option value="">Autom&aacute;tico</option><option value="INATIVO">Inativo</option><option value="ENCERRADO">Encerrado</option></select></label>
+        <label class="campo-largo">Observa&ccedil;&otilde;es<textarea id="contratoDetalhadoObservacoes"></textarea></label>
+      </div>
+      <div class="modal-acoes">
+        <div class="modal-status" id="statusFormContratoDetalhado" role="status" aria-live="polite"></div>
+        <button class="btn-form btn-cancelar" onclick="fecharFormContratoDetalhado()">Cancelar</button>
+        <button class="btn-form btn-salvar" onclick="salvarContratoDetalhado()">Salvar contrato</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="modalImportacaoContratos">
+    <div class="modal-content modal-grande">
+      <div class="modal-header"><h2>Importar contratos</h2><button class="btn-fechar-modal" onclick="fecharModalImportacaoContratos()">&times;</button></div>
+      <p class="texto-modal-info">Use a planilha de contratos atualizada. Contratos existentes serão atualizados por órgão + número + descrição.</p>
+      <div class="form-grid-financeiro">
+        <label class="campo-largo campo-arquivo-contratos">Planilha Excel<input id="arquivoImportacaoContratos" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"></label>
+        <div class="modal-acoes campo-largo"><div class="modal-status" id="statusImportacaoContratos" role="status" aria-live="polite"></div><button class="btn-form btn-cancelar" onclick="fecharModalImportacaoContratos()">Cancelar</button><button class="btn-form btn-salvar" onclick="analisarImportacaoContratos()">Analisar</button></div>
+      </div>
+      <div id="resultadoImportacaoContratos" class="importacao-dashboard-resultado hidden">
+        <div class="importacao-dashboard-grid">
+          <div class="resumo-planilha"><span>Válidos</span><strong id="impContrValidos">0</strong></div>
+          <div class="resumo-planilha"><span>Criar</span><strong id="impContrCriar">0</strong></div>
+          <div class="resumo-planilha"><span>Atualizar</span><strong id="impContrAtualizar">0</strong></div>
+          <div class="resumo-planilha"><span>Ignoradas</span><strong id="impContrIgnoradas">0</strong></div>
+        </div>
+        <div class="tabela-preview-planilha" id="impContrPreview"></div>
+        <div class="modal-acoes"><button class="btn-form btn-salvar" onclick="confirmarImportacaoContratos()">Confirmar importação</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="modalPlanilhaContratos">
+    <div class="modal-content modal-grande">
+      <div class="modal-header"><h2>Gerar planilha de contratos</h2><button class="btn-fechar-modal" onclick="fecharModalPlanilhaContratos()">&times;</button></div>
+      <p class="texto-modal-info">
+        Escolha os contratos da rela&ccedil;&atilde;o. A planilha inclui validade, valor consumido e porcentagem de consumo. O contexto atual usa aba, busca, &oacute;rg&atilde;o e status aplicados na tela.
+      </p>
+      <div class="opcoes-planilha">
+        <label class="opcao-planilha" for="modoPlanilhaContratosContexto">
+          <input id="modoPlanilhaContratosContexto" type="radio" name="modoPlanilhaContratos" value="contexto" checked onchange="atualizarModoPlanilhaContratos()">
+          <span>Contexto atual da tela</span>
+        </label>
+        <label class="opcao-planilha" for="modoPlanilhaContratosTodos">
+          <input id="modoPlanilhaContratosTodos" type="radio" name="modoPlanilhaContratos" value="todos" onchange="atualizarModoPlanilhaContratos()">
+          <span>Rela&ccedil;&atilde;o de todos os contratos</span>
+        </label>
+        <label class="opcao-planilha" for="modoPlanilhaContratosVencimentos">
+          <input id="modoPlanilhaContratosVencimentos" type="radio" name="modoPlanilhaContratos" value="vencimentos" onchange="atualizarModoPlanilhaContratos()">
+          <span>Contratos a vencer</span>
+        </label>
+        <label class="opcao-planilha" for="modoPlanilhaContratosOrgao">
+          <input id="modoPlanilhaContratosOrgao" type="radio" name="modoPlanilhaContratos" value="orgao" onchange="atualizarModoPlanilhaContratos()">
+          <span>&Oacute;rg&atilde;o espec&iacute;fico</span>
+        </label>
+        <label class="opcao-planilha" for="modoPlanilhaContratosMapaEmpenhos">
+          <input id="modoPlanilhaContratosMapaEmpenhos" type="radio" name="modoPlanilhaContratos" value="mapa_empenhos" onchange="atualizarModoPlanilhaContratos()">
+          <span>Mapa de empenhos e saldos</span>
+        </label>
+        <label class="opcao-planilha" for="modoPlanilhaContratosStatus">
+          <input id="modoPlanilhaContratosStatus" type="radio" name="modoPlanilhaContratos" value="status" onchange="atualizarModoPlanilhaContratos()">
+          <span>Status espec&iacute;fico</span>
+        </label>
+        <label class="opcao-planilha" for="modoPlanilhaContratosSelecionados">
+          <input id="modoPlanilhaContratosSelecionados" type="radio" name="modoPlanilhaContratos" value="selecionados" onchange="atualizarModoPlanilhaContratos()">
+          <span>Rela&ccedil;&atilde;o de contratos selecionados</span>
+        </label>
+      </div>
+
+      <div class="bloco-planilha hidden" id="blocoPlanilhaContratosContexto">
+        <div class="resumo-planilha" id="resumoPlanilhaContratosContexto">0 contratos no contexto atual.</div>
+      </div>
+
+      <div class="bloco-planilha hidden" id="blocoPlanilhaContratosOrgao">
+        <div class="form-group">
+          <label for="campoOrgaoPlanilhaContratos">&Oacute;rg&atilde;o</label>
+          <select id="campoOrgaoPlanilhaContratos"></select>
+        </div>
+      </div>
+
+      <div class="bloco-planilha hidden" id="blocoPlanilhaContratosMapaEmpenhos">
+        <div class="form-group">
+          <label for="campoOrgaoMapaEmpenhos">&Oacute;rg&atilde;o</label>
+          <select id="campoOrgaoMapaEmpenhos" required></select>
+        </div>
+        <p class="texto-modal-info">Empenhos do exerc&iacute;cio atual no Portal demonstrativo de dados fict&iacute;cios.</p>
+      </div>
+
+      <div class="bloco-planilha hidden" id="blocoPlanilhaContratosStatus">
+        <div class="form-group">
+          <label for="campoStatusPlanilhaContratos">Status</label>
+          <select id="campoStatusPlanilhaContratos">
+            <option value="ATIVO">Ativo</option>
+            <option value="PROXIMO_VENCIMENTO">Pr&oacute;ximo vencimento</option>
+            <option value="VENCIDO">Vencido</option>
+            <option value="SEM SALDO">Sem saldo</option>
+            <option value="INATIVO">Inativo</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="bloco-planilha hidden" id="blocoPlanilhaContratosSelecionados">
+        <div class="acoes-lista-planilha">
+          <button class="btn-form btn-cancelar" onclick="selecionarTodosPlanilhaContratos()">Selecionar todos</button>
+          <button class="btn-form btn-cancelar" onclick="selecionarVencimentosPlanilhaContratos()">Selecionar vencimentos</button>
+          <button class="btn-form btn-cancelar" onclick="limparSelecaoPlanilhaContratos()">Limpar sele&ccedil;&atilde;o</button>
+        </div>
+        <div class="resumo-planilha" id="resumoSelecaoPlanilhaContratos">0 contratos marcados.</div>
+        <div id="listaContratosPlanilha" class="lista-os-planilha"></div>
+      </div>
+
+      <div class="modal-acoes">
+        <div class="modal-status" id="statusPlanilhaContratos" role="status" aria-live="polite"></div>
+        <button class="btn-form btn-cancelar" onclick="fecharModalPlanilhaContratos()">Cancelar</button>
+        <button class="btn-form btn-salvar" id="botaoGerarPlanilhaContratos" onclick="gerarPlanilhaContratos()">Gerar planilha</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="navegacao.js?v=20260928-revisao-textos"></script>
+  <script src="contratos.js?v=20261117-anexo-contrato"></script>
+</body>
+</html>

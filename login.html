@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - OS Eventos</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="vendor/exceljs.min.js"></script>
+  <script src="vendor/pdfkit.standalone.js"></script>
+  <script src="retencoes-pagamentos.js"></script>
+  <script src="demo-regras-os.js"></script>
+  <script src="demo-relatorios.js"></script>
+  <script src="demo-inconsistencias.js"></script>
+  <script src="demo-engine.js"></script>
+  <script src="demo-adapter.js"></script>
+  <link rel="stylesheet" href="demo-ui.css">
+</head>
+<body class="login-body">
+
+  <div class="login-page">
+    <div class="login-left">
+      <div class="login-left-content">
+        <img src="assets/identidade.svg" alt="Identidade da demonstração" class="login-logo">
+      </div>
+    </div>
+
+    <div class="login-right">
+      <div class="login-card">
+        <div class="login-card-topo">
+          <span class="login-badge">Acesso ao sistema</span>
+          <h2>Entrar</h2>
+          <p>Informe seu usuário e senha para continuar.</p>
+        </div>
+
+        <div class="login-form">
+          <div class="login-field">
+            <label for="usuario">Usuário</label>
+            <input type="text" id="usuario" placeholder="Digite seu usuário">
+          </div>
+
+          <div class="login-field">
+            <label for="senha">Senha</label>
+            <div class="login-password-wrapper">
+              <input type="password" id="senha" placeholder="Digite sua senha">
+              <button type="button" class="login-password-toggle" onclick="alternarVisibilidadeSenha()" aria-label="Mostrar senha" aria-pressed="false" title="Mostrar senha">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"></path>
+                  <circle cx="12" cy="12" r="2.75"></circle>
+                  <path class="login-password-toggle-risco" d="M4 4l16 16"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <button class="login-btn" onclick="login()">Entrar no sistema</button>
+
+          <p id="erroLogin" class="erro-login"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function alternarVisibilidadeSenha() {
+      const senha = document.getElementById("senha");
+      const botao = document.querySelector(".login-password-toggle");
+      const senhaVisivel = senha.type === "password";
+
+      senha.type = senhaVisivel ? "text" : "password";
+      botao.classList.toggle("visivel", senhaVisivel);
+      botao.setAttribute("aria-pressed", String(senhaVisivel));
+      botao.setAttribute("aria-label", senhaVisivel ? "Ocultar senha" : "Mostrar senha");
+      botao.setAttribute("title", senhaVisivel ? "Ocultar senha" : "Mostrar senha");
+    }
+
+    async function login() {
+      const usuario = document.getElementById("usuario").value.trim();
+      const senha = document.getElementById("senha").value;
+
+      const erro = document.getElementById("erroLogin");
+      erro.textContent = "";
+
+      try {
+        const resposta = await fetch("/api/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ usuario, senha })
+        });
+
+        const dados = await resposta.json();
+
+        if (!resposta.ok) {
+          erro.textContent = dados.erro || "Não foi possível entrar.";
+          return;
+        }
+
+        window.location.href = dados.destino || "/os";
+      } catch (e) {
+        erro.textContent = "Erro ao conectar com o servidor.";
+      }
+    }
+
+    document.getElementById("senha").addEventListener("keydown", function(event) {
+      if (event.key === "Enter") {
+        login();
+      }
+    });
+
+    document.getElementById("usuario").addEventListener("keydown", function(event) {
+      if (event.key === "Enter") {
+        login();
+      }
+    });
+  </script>
+
+</body>
+</html>

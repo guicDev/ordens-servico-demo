@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Precificação e Cobrança</title>
+  <link rel="stylesheet" href="style.css?v=20260928-filtros-data-celular">
+  <script src="vendor/exceljs.min.js"></script>
+  <script src="vendor/pdfkit.standalone.js"></script>
+  <script src="retencoes-pagamentos.js"></script>
+  <script src="demo-regras-os.js"></script>
+  <script src="demo-relatorios.js"></script>
+  <script src="demo-inconsistencias.js"></script>
+  <script src="demo-engine.js"></script>
+  <script src="demo-adapter.js"></script>
+  <link rel="stylesheet" href="demo-ui.css">
+</head>
+
+<body>
+  <header class="topbar">
+    <div class="topbar-esquerda">
+      <div class="topbar-brand">
+        <img src="assets/identidade.svg" alt="Identidade da demonstração" class="topbar-logo" role="button" tabindex="0" title="Abrir menu principal" aria-label="Abrir menu principal" onclick="abrirMenuLateral()">
+        <div class="topbar-brand-texto">
+          <span class="topbar-subtitulo">Sistema interno de gestão</span>
+          <h1>Precificação e Cobrança</h1>
+        </div>
+      </div>
+    </div>
+
+    <div class="topbar-acoes">
+      <div class="usuario-logado-box">
+        <span class="usuario-logado-label">Logado como</span>
+        <strong id="usuarioLogadoNome">-</strong>
+      </div>
+
+      <button class="btn-topo btn-secundario" onclick="abrirModalPlanilhaFinanceira()">
+        Gerar planilha
+      </button>
+
+      <button class="btn-topo btn-secundario" onclick="abrirModalImportacaoPrecificacao()">
+        Importar planilha
+      </button>
+
+    </div>
+  </header>
+
+  <main class="container-principal financeiro-page">
+    <section class="cards-resumo cards-resumo-financeiro">
+      <div class="resumo-card">
+        <span class="resumo-label">Total de OS</span>
+        <strong id="totalOSFinanceiras">0</strong>
+      </div>
+      <div class="resumo-card resumo-card-moeda">
+        <span class="resumo-label">Valor final</span>
+        <strong id="valorTotalFinal">R$ 0,00</strong>
+      </div>
+      <div class="resumo-card">
+        <span class="resumo-label">Pendentes</span>
+        <strong id="aguardandoPrecificacao">0</strong>
+      </div>
+      <div class="resumo-card">
+        <span class="resumo-label">Precificadas</span>
+        <strong id="totalPrecificadas">0</strong>
+      </div>
+    </section>
+
+    <section class="barra-filtros barra-filtros-financeiro">
+      <div class="campo-busca-combinada">
+        <input type="text" id="buscaFinanceira" placeholder="Buscar..." oninput="filtrarPrecificacoes()">
+        <select id="campoBuscaFinanceira" class="campo-busca-filtro" onchange="filtrarPrecificacoes()" aria-label="Campo da busca financeira">
+          <option value="todos">Tudo</option>
+          <option value="numeroOS">OS</option>
+          <option value="nomeEvento">Evento</option>
+          <option value="cliente">Cliente</option>
+          <option value="localEvento">Local</option>
+        </select>
+      </div>
+      <select id="anoFiltroFinanceiro" class="ano-filtro-compacto" onchange="alterarAnoFinanceiro()">
+        <option value="2026">2026</option>
+      </select>
+      <label class="filtro-data">
+        <span class="filtro-data-ajuda">Data inicial · dd/mm/aaaa <span aria-hidden="true">📅</span></span>
+        <input type="date" id="dataInicialFinanceiro" onchange="filtrarPrecificacoes()" title="Data inicial">
+      </label>
+      <label class="filtro-data">
+        <span class="filtro-data-ajuda">Data final · dd/mm/aaaa <span aria-hidden="true">📅</span></span>
+        <input type="date" id="dataFinalFinanceiro" onchange="filtrarPrecificacoes()" title="Data final">
+      </label>
+      <button class="btn-limpar" onclick="limparFiltrosFinanceiros()">Limpar</button>
+    </section>
+
+    <section class="financeiro-duas-colunas">
+      <div class="financeiro-lista-box financeiro-coluna-pendentes">
+        <div class="financeiro-lista-topo">
+          <div>
+            <div class="financeiro-titulo-ordenavel">
+              <h2>Pendentes</h2>
+              <button type="button" class="btn-ordenar-os" id="ordenarPendentesOS" onclick="alternarOrdenacaoFinanceira('pendentes')" title="Ordenar pendentes por número da OS">OS ↑</button>
+            </div>
+            <p>OS executadas ainda sem valor final.</p>
+          </div>
+          <span class="financeiro-contador" id="contadorPendentesPrecificacao">0</span>
+        </div>
+        <div class="financeiro-lista-cards" id="listaPrecificacoesPendentes">
+          <div class="financeiro-vazio">Carregando...</div>
+        </div>
+      </div>
+
+      <div class="financeiro-lista-box financeiro-coluna-precificadas">
+        <div class="financeiro-lista-topo">
+          <div>
+            <div class="financeiro-titulo-ordenavel">
+              <h2>Precificadas</h2>
+              <button type="button" class="btn-ordenar-os" id="ordenarPrecificadasOS" onclick="alternarOrdenacaoFinanceira('precificadas')" title="Ordenar precificadas por número da OS">OS ↑</button>
+            </div>
+            <p>OS executadas com valor final calculado.</p>
+          </div>
+          <span class="financeiro-contador" id="contadorPrecificadas">0</span>
+        </div>
+        <div class="financeiro-lista-cards" id="listaPrecificacoesConcluidas">
+          <div class="financeiro-vazio">Carregando...</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="financeiro-lista-box hidden">
+      <div class="financeiro-lista-topo">
+        <h2>OS executadas para precificação</h2>
+        <button class="btn-topo btn-secundario" onclick="carregarPrecificacoes()">Atualizar</button>
+      </div>
+
+      <div class="financeiro-tabela-wrap">
+        <table class="financeiro-tabela">
+          <thead>
+            <tr>
+              <th>OS</th>
+              <th>Evento</th>
+              <th>Cliente</th>
+              <th>Local</th>
+              <th>Data</th>
+              <th>Respons&aacute;vel</th>
+              <th>Situa&ccedil;&atilde;o</th>
+              <th>Valor final</th>
+              <th>Precificação</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td colspan="10" class="financeiro-vazio">Carregando...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <div class="modal" id="modalFinanceiro">
+    <div class="modal-content modal-grande modal-financeiro">
+      <div class="modal-header">
+        <h2 id="tituloModalFinanceiro">Precificação da OS</h2>
+        <button class="btn-fechar-modal" onclick="fecharModalFinanceiro()">×</button>
+      </div>
+
+      <div>
+        <section class="financeiro-bloco">
+          <h3>Dados da OS</h3>
+          <div class="financeiro-dados-os" id="dadosOSFinanceiro"></div>
+          <div class="resumo-planilha hidden" id="resumoPrecificacaoPadrao"></div>
+        </section>
+
+      </div>
+
+      <section class="financeiro-bloco">
+        <div class="financeiro-lista-topo">
+          <h3>Itens</h3>
+          <button class="btn-topo btn-secundario" onclick="adicionarItemFinanceiro()">Adicionar item</button>
+        </div>
+        <div id="itensFinanceiros" class="itens-financeiros"></div>
+      </section>
+
+      <section class="financeiro-totais-grid">
+        <div class="financeiro-total-card destaque">
+          <div class="financeiro-total-topo">
+            <span>Valor final</span>
+            <label class="toggle-doacao">
+              <input type="checkbox" id="campoDoacaoFinanceiro" onchange="alternarDoacaoFinanceira()">
+              <span>Doação</span>
+            </label>
+          </div>
+          <strong id="valorFinalFinanceiro">R$ 0,00</strong>
+          <small id="ajudaDoacaoFinanceiro" class="financeiro-ajuda-doacao hidden">Esta OS será marcada como doação e deixará a lista de pendentes mesmo com valor zero.</small>
+        </div>
+      </section>
+
+      <section class="financeiro-bloco">
+        <label>Observações financeiras
+          <textarea id="campoObservacoesFinanceiras" rows="3"></textarea>
+        </label>
+      </section>
+
+      <section class="financeiro-bloco">
+        <h3>Histórico financeiro</h3>
+        <div id="historicoFinanceiro" class="historico-lista"></div>
+      </section>
+
+      <div class="modal-acoes">
+        <div class="modal-status" id="statusModalFinanceiro" role="status" aria-live="polite"></div>
+        <button class="btn-cancelar" onclick="fecharModalFinanceiro()">Cancelar</button>
+        <button class="btn-salvar" onclick="salvarPrecificacao()">Salvar precificação</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="modalPlanilhaFinanceira">
+    <div class="modal-content modal-grande">
+      <div class="modal-header">
+        <h2>Gerar planilha financeira</h2>
+        <button class="btn-fechar-modal" onclick="fecharModalPlanilhaFinanceira()">×</button>
+      </div>
+
+      <p class="texto-modal-info">
+        Escolha primeiro qual relatório financeiro gerar. Depois limite por filtros, OS, cliente ou status quando necessário.
+      </p>
+
+      <div class="opcoes-planilha">
+        <label class="opcao-planilha" for="modoPlanilhaFinanceiraGeral">
+          <input id="modoPlanilhaFinanceiraGeral" type="radio" name="modoPlanilhaFinanceira" value="geral" checked onchange="atualizarModoPlanilhaFinanceira()">
+          <span>Geral do financeiro</span>
+        </label>
+
+        <label class="opcao-planilha" for="modoPlanilhaFinanceiraNumero">
+          <input id="modoPlanilhaFinanceiraNumero" type="radio" name="modoPlanilhaFinanceira" value="numero_os" onchange="atualizarModoPlanilhaFinanceira()">
+          <span>Somente números de OS</span>
+        </label>
+
+        <label class="opcao-planilha" for="modoPlanilhaFinanceiraCliente">
+          <input id="modoPlanilhaFinanceiraCliente" type="radio" name="modoPlanilhaFinanceira" value="cliente" onchange="atualizarModoPlanilhaFinanceira()">
+          <span>Somente um cliente</span>
+        </label>
+
+        <label class="opcao-planilha" for="modoPlanilhaFinanceiraStatus">
+          <input id="modoPlanilhaFinanceiraStatus" type="radio" name="modoPlanilhaFinanceira" value="status" onchange="atualizarModoPlanilhaFinanceira()">
+          <span>Pendentes ou precificadas</span>
+        </label>
+
+        <label class="opcao-planilha" for="modoPlanilhaFinanceiraEspecificas">
+          <input id="modoPlanilhaFinanceiraEspecificas" type="radio" name="modoPlanilhaFinanceira" value="especificas" onchange="atualizarModoPlanilhaFinanceira()">
+          <span>Selecionar OS manualmente</span>
+        </label>
+        <label class="opcao-planilha" for="modoPlanilhaFinanceiraTotaisClientes">
+          <input id="modoPlanilhaFinanceiraTotaisClientes" type="radio" name="modoPlanilhaFinanceira" value="totais_clientes" onchange="atualizarModoPlanilhaFinanceira()">
+          <span>Totais por cliente</span>
+        </label>
+      </div>
+
+      <div class="bloco-planilha" id="blocoPlanilhaFinanceiraGeral">
+        <p class="texto-planilha-ajuda">
+          A planilha será gerada com as OS financeiras disponíveis. Você pode limitar aos filtros atuais da tela.
+        </p>
+        <label class="check-inline check-planilha-financeira">
+          <input type="checkbox" id="usarFiltrosAtuaisPlanilhaFinanceira" checked>
+          Usar filtros atuais da tela
+        </label>
+      </div>
+
+      <div class="bloco-planilha hidden" id="blocoPlanilhaFinanceiraNumero">
+        <div class="form-group">
+          <label for="campoNumerosOSPlanilhaFinanceira">Números de OS</label>
+          <input type="text" id="campoNumerosOSPlanilhaFinanceira" placeholder="Ex: 245, 246, 250">
+        </div>
+      </div>
+
+      <div class="bloco-planilha hidden" id="blocoPlanilhaFinanceiraCliente">
+        <div class="form-group">
+          <label for="campoClientePlanilhaFinanceira">Nome do cliente</label>
+          <input type="text" id="campoClientePlanilhaFinanceira" placeholder="Digite parte do nome do cliente">
+        </div>
+      </div>
+
+      <div class="bloco-planilha hidden" id="blocoPlanilhaFinanceiraStatus">
+        <div class="form-group">
+          <label for="campoStatusPlanilhaFinanceira">Status da precificação</label>
+          <select id="campoStatusPlanilhaFinanceira">
+            <option value="todas">Todas</option>
+            <option value="pendentes">Pendentes de precificação</option>
+            <option value="precificadas">Precificadas</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="bloco-planilha hidden" id="blocoPlanilhaFinanceiraEspecificas">
+        <div class="acoes-lista-planilha">
+          <button class="btn-form btn-cancelar" onclick="selecionarTodasPlanilhaFinanceira()">Selecionar todas</button>
+          <button class="btn-form btn-cancelar" onclick="selecionarPendentesPlanilhaFinanceira()">Selecionar pendentes</button>
+          <button class="btn-form btn-cancelar" onclick="selecionarPrecificadasPlanilhaFinanceira()">Selecionar precificadas</button>
+          <button class="btn-form btn-cancelar" onclick="limparSelecaoPlanilhaFinanceira()">Limpar seleção</button>
+        </div>
+
+        <div class="resumo-planilha" id="resumoSelecaoPlanilhaFinanceira">0 OS marcadas.</div>
+        <div id="listaOSPlanilhaFinanceira" class="lista-os-planilha"></div>
+      </div>
+
+      <div class="bloco-planilha hidden" id="blocoPlanilhaFinanceiraTotaisClientes">
+        <p class="texto-planilha-ajuda">
+          Escolha os clientes que entrarão na planilha de totais.
+        </p>
+
+        <div class="acoes-lista-planilha">
+          <button class="btn-form btn-cancelar" onclick="selecionarGrupoClientesPlanilhaFinanceira('politicos')">Selecionar políticos</button>
+          <button class="btn-form btn-cancelar" onclick="selecionarGrupoClientesPlanilhaFinanceira('secretarias')">Selecionar secretarias</button>
+          <button class="btn-form btn-cancelar" onclick="selecionarTodosClientesPlanilhaFinanceira()">Selecionar todos</button>
+          <button class="btn-form btn-cancelar" onclick="limparSelecaoClientesPlanilhaFinanceira()">Limpar seleção</button>
+        </div>
+
+        <div class="resumo-planilha" id="resumoSelecaoClientesPlanilhaFinanceira">0 clientes marcados.</div>
+        <div id="listaClientesPlanilhaFinanceiraTotais" class="lista-os-planilha"></div>
+      </div>
+
+      <div class="botoes">
+        <div class="modal-status" id="statusPlanilhaFinanceira" role="status" aria-live="polite"></div>
+        <button class="btn-form btn-cancelar" onclick="fecharModalPlanilhaFinanceira()">Cancelar</button>
+        <button class="btn-form btn-salvar" onclick="gerarPlanilhaFinanceira()">Gerar planilha</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="modalImportacaoPrecificacao">
+    <div class="modal-content modal-grande">
+      <div class="modal-header">
+        <h2>Importar precificação</h2>
+        <button class="btn-fechar-modal" onclick="fecharModalImportacaoPrecificacao()">×</button>
+      </div>
+
+      <p class="texto-modal-info">
+        Analise a planilha financeira antes de importar. Esta ação atualiza apenas OS existentes, não cria OS novas.
+      </p>
+
+      <div class="form-group">
+        <label for="arquivoImportacaoPrecificacao">Planilha Excel</label>
+        <input id="arquivoImportacaoPrecificacao" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+      </div>
+
+      <div class="botoes">
+        <div class="modal-status" id="statusImportacaoPrecificacao" role="status" aria-live="polite"></div>
+        <button class="btn-form btn-cancelar" onclick="fecharModalImportacaoPrecificacao()">Cancelar</button>
+        <button class="btn-form btn-salvar" onclick="analisarImportacaoPrecificacao()">Analisar planilha</button>
+      </div>
+
+      <div id="resultadoImportacaoPrecificacao" class="importacao-dashboard-resultado hidden">
+        <div class="importacao-dashboard-grid">
+          <div class="resumo-planilha"><span>OS encontradas</span><strong id="importacaoPrecificacaoOSEncontradas">0</strong></div>
+          <div class="resumo-planilha"><span>OS não encontradas</span><strong id="importacaoPrecificacaoOSNaoEncontradas">0</strong></div>
+          <div class="resumo-planilha"><span>Itens criados</span><strong id="importacaoPrecificacaoItensCriados">0</strong></div>
+          <div class="resumo-planilha"><span>Itens atualizados</span><strong id="importacaoPrecificacaoItensAtualizados">0</strong></div>
+          <div class="resumo-planilha"><span>Substituições</span><strong id="importacaoPrecificacaoSubstituicoes">0</strong></div>
+          <div class="resumo-planilha"><span>Linhas com erro</span><strong id="importacaoPrecificacaoErros">0</strong></div>
+          <div class="resumo-planilha"><span>Divergências</span><strong id="importacaoPrecificacaoDivergencias">0</strong></div>
+          <div class="resumo-planilha"><span>Valor importado</span><strong id="importacaoPrecificacaoValorTotal">R$ 0,00</strong></div>
+        </div>
+
+        <div class="importacao-dashboard-alertas" id="importacaoPrecificacaoAlertas"></div>
+        <div class="tabela-preview-planilha" id="importacaoPrecificacaoPreview"></div>
+
+        <div class="botoes">
+          <button class="btn-form btn-cancelar" onclick="fecharModalImportacaoPrecificacao()">Cancelar</button>
+          <button class="btn-form btn-salvar" id="btnConfirmarImportacaoPrecificacao" onclick="confirmarImportacaoPrecificacao()">Confirmar importação</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="navegacao.js?v=20260928-revisao-textos"></script>
+  <script src="financeiro.js?v=20261022-audit-os"></script>
+</body>
+
+</html>

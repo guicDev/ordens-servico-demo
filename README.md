@@ -1,20 +1,18 @@
-# Ordens de Serviço — Demonstração
+# OS Eventos — Demonstração
 
-Demonstração interativa de gestão de eventos com ordens de serviço, contratos, recebimentos e estoque. Todos os registros iniciais são fictícios e criados do zero. Não há cadastro, senha, servidor de dados ou integração externa.
+Demonstração interativa do sistema de ordens de serviço para eventos, com suas telas, estilos, menus, formulários e modais completos. Todos os registros iniciais são novos e fictícios. Nenhuma conexão com uma operação real é necessária.
 
-## Explorar
+## Explorar o sistema
 
-- Visão geral com indicadores que refletem as alterações.
-- Ordens em kanban ou lista, busca, filtros por status e data, cadastro, edição, detalhes e mudança de status.
-- Lançamentos financeiros em centavos, vencimentos, edição e pagamento fictício.
-- Contratos com vigência, valor, edição e documento demonstrativo para impressão.
-- Estoque com total, disponível e em uso; entradas, saídas e devoluções validadas.
-- Histórico local das ações, exportações CSV e impressão de OS fictícia.
-- Tema claro ou escuro e restauração dos dados de exemplo.
+As nove páginas incluem acesso demonstrativo, dashboard de OS, precificação e cobrança, pagamentos em aberto, contratos, histórico, estoque, inconsistências e dashboard temporário. Os gráficos, filtros, seleção em massa, lixeira, anexos e formulários mantêm os fluxos da interface.
+
+O acesso é público: **admin**, senha de exemplo **demo**. O controle discreto “Demonstração · dados fictícios” permite escolher outros perfis fictícios e restaurar os registros. Os perfis reproduzem acessos administrativos, operacionais, financeiros, de consulta temporária e de contratos somente leitura. Eles demonstram permissões; não constituem autenticação ou proteção de dados reais.
+
+Não informe credenciais, dados pessoais, documentos ou valores comerciais reais.
 
 ## Executar localmente
 
-Requer Node.js 20 ou superior. Não há dependências para instalar.
+Requer Node.js 20 ou superior. Bibliotecas de planilhas e PDF estão incluídas localmente; não é necessário instalar dependências.
 
 ```sh
 npm run check
@@ -22,25 +20,38 @@ npm test
 npm start
 ```
 
-Abra `http://127.0.0.1:4174`. O servidor de prévia aceita somente conexões locais. Para escolher outra porta, defina a variável `PORT` antes de iniciar.
+Abra `http://127.0.0.1:4174`. A prévia aceita apenas conexões locais. A variável `PORT` permite escolher outra porta.
 
-## Preparar a publicação
+## Publicar no GitHub e na Vercel
 
 ```sh
 npm run build
 ```
 
-O build cria `dist/` com uma lista explícita de cinco arquivos estáticos. Não inclui testes, documentação, histórico de repositório ou arquivos adicionais.
+O build copia somente os arquivos listados em `scripts/public-files.json` para `dist/`: nove páginas, scripts e estilos, identidade neutra e bibliotecas locais com seus avisos de licença. Arquivos adicionais, testes e documentação não entram nessa saída.
 
-Crie um repositório novo no GitHub e envie os arquivos deste projeto. Não é necessário informar segredos ou criar variáveis de ambiente. Revise o conteúdo antes de tornar o repositório público.
+Envie este projeto a um repositório novo no GitHub e importe-o na Vercel. Use o preset **Other**, comando `npm run build`, diretório de saída `dist` e nenhuma variável de ambiente. O arquivo `vercel.json` contém essas opções, os aliases de navegação e os cabeçalhos de segurança. A demonstração não precisa de Functions, banco, conta de serviço ou segredo.
 
-Na Vercel, importe esse repositório, selecione a pasta deste projeto como diretório raiz e mantenha o preset **Other**, build `npm run build` e saída `dist`. O arquivo `vercel.json` já define essas opções e cabeçalhos de segurança. Navegação usa fragmentos de URL; nenhuma regra de reescrita é necessária.
+## Funcionamento dos dados
 
-## Dados e limites
+O conjunto inicial cobre todos os status de OS, clientes fictícios, contratos, cobranças com retenções e equipamentos de exemplo. As datas são relativas ao dia em que um cenário novo é criado. O estado é salvo apenas em `localStorage`, na chave `demonstracao.os.fiel.v2`. Preferências de interface usam o prefixo `demonstracao.os.ui.`.
 
-As alterações ficam em `localStorage`, na chave exclusiva `ordens-servico-demo.state.v1`. Recarregar a página preserva os registros neste navegador; um navegador ou perfil diferente recebe seu próprio cenário. Duas abas na mesma origem compartilham armazenamento e a última gravação prevalece; não há colaboração ou sincronização entre abas. **Restaurar demonstração** substitui apenas o estado desta aplicação, com datas relativas ao dia atual. Se o navegador bloquear ou esgotar o armazenamento, um aviso informa que as alterações ficam somente na aba atual.
+Recarregar a página preserva as alterações. Outro navegador ou perfil recebe seu próprio cenário. Abas na mesma origem compartilham armazenamento; a última gravação prevalece. Não há colaboração simultânea, conta ou sincronização em nuvem. Se o armazenamento falhar ou estiver bloqueado, o estado permanece na memória da aba e um aviso informa a limitação. Restaurar remove somente o estado desta demonstração e suas preferências.
 
-Não informe dados pessoais, financeiros ou comerciais reais. Os dados locais não são cifrados. Os CSVs exportados e documentos impressos são exemplos e permanecem sob controle de quem os gerou. A aplicação não oferece autenticação real, importação de arquivos, emissão fiscal, anexos, mapas, notificações em tempo real ou consulta a serviços externos. Documentos impressos exibem indicação de demonstração e não possuem validade.
+Mudanças de status movimentam reservas de estoque conforme quantidade e diárias; a conclusão libera a reserva e cria a entrada de precificação. Saídas manuais diminuem a quantidade total. Quantidades de estoque mantêm três casas decimais. Valores de precificação usam reais; pagamentos, retenções e contratos usam centavos. Consumos vinculados aos pagamentos atualizam os saldos dos contratos.
 
-Os valores de estoque não são automaticamente reservados por OS; as movimentações são registradas na tela de estoque. Orçamentos de OS e lançamentos financeiros são registros separados: editar um não altera o outro.
+## Relatórios e importações
 
+As exportações XLSX usam os geradores e estilos das respectivas telas. Os arquivos são planilhas reais, reabertas nos testes. O PDF da OS mantém os dados, caixas e áreas do documento. A exportação CSV permanece disponível no dashboard. Esses arquivos contêm apenas o estado local e dados fictícios, inclusive qualquer alteração feita pelo visitante.
+
+As importações de OS, contratos, precificação e pagamentos usam seus formatos próprios. O relatório exportado e o formato de importação de contratos/OS podem ter colunas diferentes. A prévia mostra o que será aplicado antes da confirmação. Em contratos, o layout de entrada tem doze colunas: Item, Órgão, Contrato, Descrição, Valor original, Aditivos, Valor global, Vigência, Início, Fim, Status e Atestado. O modelo de pagamentos é gerado com exemplos fictícios. As importações ficam limitadas a 3 MB e são processadas na própria aba; planilhas excessivamente complexas podem tornar o navegador lento.
+
+Anexos de exemplo ficam limitados a 1 MB, com PDF, PNG, JPEG ou DOCX. O nome e conteúdo permanecem apenas no navegador e podem consumir sua cota de armazenamento. Links de anexos são resolvidos pelo adaptador local, sem upload.
+
+Mapas de empenhos e relatórios fotográficos preservam a ação e sua localização na interface, mas usam conteúdo explicitamente fictício. O mapa gera XLSX sem consultar portais; o relatório fotográfico gera um exemplo PDF sem fotografias reais. Essas diferenças são informadas no contexto da ação.
+
+## Código e bibliotecas
+
+`demo-adapter.js` substitui as chamadas de dados e os downloads por respostas locais. Conexões externas são bloqueadas; contratos desconhecidos devolvem erro explícito. `demo-engine.js` mantém os registros e as mutações. Regras puras de status, retenções, inconsistências e relatórios são compartilhadas com a interface preservada. A política de conteúdo permite os scripts e eventos locais da interface e bloqueia conexões de dados.
+
+Os avisos de terceiros são mantidos em `vendor/exceljs-LICENSE.txt` e `vendor/pdfkit-LICENSE.txt`. O projeto não atribui uma licença aberta ao restante do código. Antes de redistribuí-lo ou definir uma licença, confirme os direitos correspondentes.

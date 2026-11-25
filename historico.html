@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hist&oacute;rico do Sistema</title>
+  <link rel="stylesheet" href="style.css?v=20260928-filtros-data-celular">
+  <script src="vendor/exceljs.min.js"></script>
+  <script src="vendor/pdfkit.standalone.js"></script>
+  <script src="retencoes-pagamentos.js"></script>
+  <script src="demo-regras-os.js"></script>
+  <script src="demo-relatorios.js"></script>
+  <script src="demo-inconsistencias.js"></script>
+  <script src="demo-engine.js"></script>
+  <script src="demo-adapter.js"></script>
+  <link rel="stylesheet" href="demo-ui.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-esquerda">
+      <div class="topbar-brand">
+        <img src="assets/identidade.svg" alt="Identidade da demonstração" class="topbar-logo" role="button" tabindex="0" title="Abrir menu principal" aria-label="Abrir menu principal" onclick="abrirMenuLateral()">
+        <div class="topbar-brand-texto">
+          <span class="topbar-subtitulo">Sistema interno de gest&atilde;o</span>
+          <div class="topbar-titulo-linha">
+            <h1>Hist&oacute;rico do Sistema</h1>
+            <div class="historico-header-tabs" role="tablist" aria-label="Tipo de hist&oacute;rico">
+              <button class="painel-tab ativo" data-modulo-historico="todos" onclick="selecionarAbaHistorico('todos')">Tudo</button>
+              <button class="painel-tab" data-modulo-historico="dashboard" onclick="selecionarAbaHistorico('dashboard')">Dashboard / OS</button>
+              <button class="painel-tab" data-modulo-historico="precificacao" onclick="selecionarAbaHistorico('precificacao')">Precifica&ccedil;&atilde;o</button>
+              <button class="painel-tab" data-modulo-historico="pagamentos" onclick="selecionarAbaHistorico('pagamentos')">Pagamentos</button>
+              <button class="painel-tab" data-modulo-historico="contratos" onclick="selecionarAbaHistorico('contratos')">Contratos</button>
+              <button class="painel-tab" data-modulo-historico="estoque" onclick="selecionarAbaHistorico('estoque')">Estoque</button>
+              <button class="painel-tab" data-modulo-historico="lixeira" onclick="selecionarAbaHistorico('lixeira')">Lixeira / lotes</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="topbar-acoes">
+      <div class="usuario-logado-box">
+        <span class="usuario-logado-label">Logado como</span>
+        <strong id="usuarioLogadoNome">-</strong>
+      </div>
+      <button class="btn-topo btn-secundario" onclick="abrirModalPlanilhaHistorico()">Gerar planilha</button>
+    </div>
+  </header>
+
+  <main class="container-principal financeiro-page historico-page">
+    <section id="painelHistoricoDashboard">
+      <section class="cards-resumo cards-resumo-financeiro">
+        <div class="resumo-card"><span class="resumo-label">Registros</span><strong id="histResumoTotal">0</strong></div>
+        <div class="resumo-card"><span class="resumo-label">M&oacute;dulos</span><strong id="histResumoOS">0</strong></div>
+        <div class="resumo-card"><span class="resumo-label">Usu&aacute;rios</span><strong id="histResumoEdicoes">0</strong></div>
+        <div class="resumo-card"><span class="resumo-label">Itens afetados</span><strong id="histResumoStatus">0</strong></div>
+      </section>
+
+      <section class="barra-filtros barra-filtros-financeiro historico-filtros">
+        <div class="campo-busca-combinada">
+          <input id="buscaHistorico" type="text" placeholder="Buscar..." oninput="filtrarHistorico()">
+          <select id="campoBuscaHistorico" class="campo-busca-filtro" onchange="filtrarHistorico()" aria-label="Campo da busca de hist&oacute;rico">
+            <option value="todos">Tudo</option>
+            <option value="referencia">Refer&ecirc;ncia</option>
+            <option value="numeroOS">N&uacute;mero da OS</option>
+            <option value="nomeEvento">Evento / descri&ccedil;&atilde;o</option>
+            <option value="solicitante">Cliente / &oacute;rg&atilde;o</option>
+            <option value="responsavel">Respons&aacute;vel</option>
+            <option value="acao">A&ccedil;&atilde;o</option>
+          </select>
+        </div>
+        <select id="filtroAcaoHistorico" onchange="filtrarHistorico()"><option value="">A&ccedil;&atilde;o</option></select>
+        <label class="filtro-data">
+          <span class="filtro-data-ajuda">Data inicial · dd/mm/aaaa <span aria-hidden="true">📅</span></span>
+          <input id="dataInicialHistorico" type="date" onchange="filtrarHistorico()" title="Data inicial">
+        </label>
+        <label class="filtro-data">
+          <span class="filtro-data-ajuda">Data final · dd/mm/aaaa <span aria-hidden="true">📅</span></span>
+          <input id="dataFinalHistorico" type="date" onchange="filtrarHistorico()" title="Data final">
+        </label>
+        <button class="btn-limpar" onclick="limparFiltrosHistorico()">Limpar</button>
+      </section>
+
+      <section class="pagamentos-graficos historico-graficos">
+        <div class="financeiro-lista-box"><h2>Movimenta&ccedil;&otilde;es por dia</h2><canvas id="graficoPeriodoHistorico" height="170"></canvas></div>
+        <div class="financeiro-lista-box"><h2>Cadastros e a&ccedil;&otilde;es</h2><canvas id="graficoAcoesHistorico" height="170"></canvas></div>
+        <div class="financeiro-lista-box"><h2>A&ccedil;&otilde;es por respons&aacute;vel</h2><canvas id="graficoResponsaveisHistorico" height="170"></canvas></div>
+      </section>
+
+      <section class="financeiro-lista-box">
+        <div class="financeiro-lista-topo">
+          <div>
+            <h2>Hist&oacute;rico unificado</h2>
+            <p>Auditoria de todas as telas. Clique em uma aba ou filtre a a&ccedil;&atilde;o.</p>
+          </div>
+          <span class="financeiro-contador" id="contadorHistorico">0</span>
+        </div>
+        <div class="tabela-preview-planilha pagamentos-tabela-wrap">
+          <table class="tabela-pagamentos tabela-historico">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Tela</th>
+                <th>Refer&ecirc;ncia</th>
+                <th>Evento / cliente</th>
+                <th>A&ccedil;&atilde;o</th>
+                <th>Alterado por</th>
+                <th>Detalhe</th>
+                <th>Observa&ccedil;&atilde;o</th>
+              </tr>
+            </thead>
+            <tbody id="tabelaHistorico"><tr><td colspan="8">Carregando...</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+
+    <section id="painelHistoricoEstoque" class="hidden">
+      <section class="cards-resumo cards-resumo-financeiro">
+        <div class="resumo-card"><span class="resumo-label">Movimenta&ccedil;&otilde;es</span><strong id="estoqueHistTotal">0</strong></div>
+        <div class="resumo-card"><span class="resumo-label">Entradas</span><strong id="estoqueHistEntradas">0</strong></div>
+        <div class="resumo-card"><span class="resumo-label">Sa&iacute;das</span><strong id="estoqueHistSaidas">0</strong></div>
+        <div class="resumo-card"><span class="resumo-label">OS vinculadas</span><strong id="estoqueHistOS">0</strong></div>
+      </section>
+
+      <section class="barra-filtros barra-filtros-financeiro historico-filtros">
+        <input id="buscaHistoricoEstoque" type="text" placeholder="Buscar item, OS, motivo..." oninput="filtrarHistoricoEstoque()">
+        <select id="filtroTipoHistoricoEstoque" onchange="filtrarHistoricoEstoque()">
+          <option value="">Todos os tipos</option>
+          <option value="entrada_manual">Entrada manual</option>
+          <option value="saida_manual">Sa&iacute;da manual</option>
+          <option value="saida_os">Sa&iacute;da por OS</option>
+          <option value="devolucao_os">Devolu&ccedil;&atilde;o por OS</option>
+          <option value="cadastro_item">Cadastro</option>
+          <option value="edicao_item">Edi&ccedil;&atilde;o</option>
+        </select>
+        <button class="btn-limpar" onclick="limparFiltrosHistoricoEstoque()">Limpar</button>
+      </section>
+
+      <section class="financeiro-lista-box">
+        <div class="financeiro-lista-topo">
+          <div>
+            <h2>Movimenta&ccedil;&otilde;es do estoque</h2>
+            <p>Entradas, sa&iacute;das manuais, baixas autom&aacute;ticas e devolu&ccedil;&otilde;es por OS.</p>
+          </div>
+          <span class="financeiro-contador" id="contadorHistoricoEstoque">0</span>
+        </div>
+        <div class="tabela-preview-planilha pagamentos-tabela-wrap">
+          <table class="tabela-pagamentos tabela-historico">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Item</th>
+                <th>Tipo</th>
+                <th>Qtd.</th>
+                <th>OS</th>
+                <th>Respons&aacute;vel</th>
+                <th>Motivo</th>
+                <th>Observa&ccedil;&atilde;o</th>
+              </tr>
+            </thead>
+            <tbody id="tabelaHistoricoEstoque"><tr><td colspan="8">Carregando...</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <div class="modal" id="modalPlanilhaHistorico">
+    <div class="modal-content modal-grande">
+      <div class="modal-header"><h2>Gerar planilha de hist&oacute;rico</h2><button class="btn-fechar-modal" onclick="fecharModalPlanilhaHistorico()">&times;</button></div>
+      <p class="texto-modal-info">
+        Escolha quais registros entram na planilha. O contexto atual usa busca, campo, a&ccedil;&atilde;o e per&iacute;odo aplicados na tela.
+      </p>
+
+      <div class="opcoes-planilha">
+        <label class="opcao-planilha" for="modoPlanilhaHistoricoContexto">
+          <input id="modoPlanilhaHistoricoContexto" type="radio" name="modoPlanilhaHistorico" value="contexto" checked onchange="atualizarModoPlanilhaHistorico()">
+          <span>Contexto atual da tela</span>
+        </label>
+        <label class="opcao-planilha" for="modoPlanilhaHistoricoTodos">
+          <input id="modoPlanilhaHistoricoTodos" type="radio" name="modoPlanilhaHistorico" value="todos" onchange="atualizarModoPlanilhaHistorico()">
+          <span>Todos os registros</span>
+        </label>
+        <label class="opcao-planilha" for="modoPlanilhaHistoricoAcao">
+          <input id="modoPlanilhaHistoricoAcao" type="radio" name="modoPlanilhaHistorico" value="acao" onchange="atualizarModoPlanilhaHistorico()">
+          <span>A&ccedil;&atilde;o espec&iacute;fica</span>
+        </label>
+        <label class="opcao-planilha" for="modoPlanilhaHistoricoResponsavel">
+          <input id="modoPlanilhaHistoricoResponsavel" type="radio" name="modoPlanilhaHistorico" value="responsavel" onchange="atualizarModoPlanilhaHistorico()">
+          <span>Respons&aacute;vel</span>
+        </label>
+        <label class="opcao-planilha" for="modoPlanilhaHistoricoPeriodo">
+          <input id="modoPlanilhaHistoricoPeriodo" type="radio" name="modoPlanilhaHistorico" value="periodo" onchange="atualizarModoPlanilhaHistorico()">
+          <span>Per&iacute;odo</span>
+        </label>
+        <label class="opcao-planilha" for="modoPlanilhaHistoricoSelecionados">
+          <input id="modoPlanilhaHistoricoSelecionados" type="radio" name="modoPlanilhaHistorico" value="selecionados" onchange="atualizarModoPlanilhaHistorico()">
+          <span>Selecionar registros</span>
+        </label>
+      </div>
+
+      <div class="bloco-planilha hidden" id="blocoPlanilhaHistoricoContexto">
+        <div class="resumo-planilha" id="resumoPlanilhaHistoricoContexto">0 registros no contexto atual.</div>
+      </div>
+
+      <div class="bloco-planilha hidden" id="blocoPlanilhaHistoricoAcao">
+        <div class="form-group">
+          <label for="campoAcaoPlanilhaHistorico">A&ccedil;&atilde;o</label>
+          <select id="campoAcaoPlanilhaHistorico"></select>
+        </div>
+      </div>
+
+      <div class="bloco-planilha hidden" id="blocoPlanilhaHistoricoResponsavel">
+        <div class="form-group">
+          <label for="campoResponsavelPlanilhaHistorico">Respons&aacute;vel</label>
+          <select id="campoResponsavelPlanilhaHistorico"></select>
+        </div>
+      </div>
+
+      <div class="bloco-planilha hidden" id="blocoPlanilhaHistoricoPeriodo">
+        <div class="periodo-planilha-cabecalho">
+          <strong>Intervalo de movimenta&ccedil;&atilde;o</strong>
+          <span>Use uma ou duas datas. Com as duas, a planilha respeita o intervalo completo.</span>
+        </div>
+        <div class="periodo-planilha-grid">
+          <div class="form-group">
+            <label for="campoDataInicialPlanilhaHistorico">Data inicial</label>
+            <input id="campoDataInicialPlanilhaHistorico" type="date">
+          </div>
+          <div class="form-group">
+            <label for="campoDataFinalPlanilhaHistorico">Data final</label>
+            <input id="campoDataFinalPlanilhaHistorico" type="date">
+          </div>
+        </div>
+      </div>
+
+      <div class="bloco-planilha hidden" id="blocoPlanilhaHistoricoSelecionados">
+        <div class="acoes-lista-planilha">
+          <button class="btn-form btn-cancelar" onclick="selecionarTodosPlanilhaHistorico()">Selecionar todos</button>
+          <button class="btn-form btn-cancelar" onclick="selecionarFiltradosPlanilhaHistorico()">Selecionar filtrados</button>
+          <button class="btn-form btn-cancelar" onclick="limparSelecaoPlanilhaHistorico()">Limpar sele&ccedil;&atilde;o</button>
+        </div>
+        <div class="resumo-planilha" id="resumoSelecaoPlanilhaHistorico">0 registros marcados.</div>
+        <div id="listaHistoricoPlanilha" class="lista-os-planilha"></div>
+      </div>
+
+      <div class="modal-acoes">
+        <div class="modal-status" id="statusPlanilhaHistorico" role="status" aria-live="polite"></div>
+        <button class="btn-form btn-cancelar" onclick="fecharModalPlanilhaHistorico()">Cancelar</button>
+        <button class="btn-form btn-salvar" onclick="gerarPlanilhaHistorico()">Gerar planilha</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="navegacao.js?v=20260928-revisao-textos"></script>
+  <script src="historico.js?v=20261123-detalhes-legiveis"></script>
+</body>
+</html>

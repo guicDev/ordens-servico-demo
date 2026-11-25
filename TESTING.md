@@ -1,20 +1,26 @@
-# Verificação da demonstração
+# Verificação
 
-Execute `npm run check`, `npm test` e `npm run build` com Node.js 20 ou superior. Os testes usam apenas memória e nunca abrem bancos ou serviços externos.
+Execute `npm run check`, `npm test` e `npm run build` com Node.js 20 ou superior. Os testes usam dados fictícios em memória e as bibliotecas locais; não abrem bancos ou serviços externos.
 
-Os testes de domínio verificam transições de status, persistência e restauração, independência de armazenamento, pagamentos sem duplicidade, dinheiro em centavos, entrada/saída/devolução de estoque, quantidade indisponível, contratos, datas inválidas, conteúdo HTML tratado como texto, CSV sem execução de fórmulas e falhas de armazenamento.
+Os testes cobrem os contratos consumidos pelas telas, cálculos de retenções em centavos, precificação em reais, contratos agrupados e seus consumos, controle de versão da OS, movimentações e reservas de estoque por diárias, precisão de três casas, restauração, lotes, lixeira, perfis, falha de armazenamento e rejeição de entradas inválidas. Também reabrem seis formatos de XLSX e exercitam análise/confirmação das quatro importações.
 
-Para verificar a interface, execute `npm start` e abra a prévia local:
+O CSS principal possui hash de referência verificado. Os controles e modais essenciais são verificados por seus identificadores. O build inclui somente a lista explícita de arquivos públicos.
 
-1. Confirme os indicadores e navegue por todas as seis seções.
-2. Cadastre e edite uma OS. Alterne o status e confira a posição no kanban, a lista e os indicadores.
-3. Busque por evento e filtre por data/status. Limpe os filtros.
-4. Cadastre um contrato, altere a vigência e abra o documento fictício.
-5. Faça uma saída de estoque, tente exceder o disponível e registre uma devolução.
-6. Cadastre um lançamento e registre um pagamento; confirme que o botão não permite repetição.
-7. Confira o histórico, exporte um CSV e visualize uma impressão de exemplo.
-8. Recarregue a página para verificar persistência, depois restaure a demonstração.
-9. Repita a navegação em 390 px e em tela larga. Tabelas e kanban têm rolagem própria; a página deve permanecer dentro da janela.
-10. No painel de rede do navegador, confirme que apenas os arquivos estáticos locais são carregados. Não deve haver chamadas a APIs, fontes ou serviços externos.
+## Conferência no navegador
 
-A política de conteúdo bloqueia conexões de dados e scripts externos. A prévia local serve apenas os cinco arquivos públicos previstos. O build deve conter exatamente esses arquivos.
+1. Abra o login e entre com `admin` e `demo`. Confirme o menu lateral e todas as páginas.
+2. Cadastre e edite uma OS nos formulários existentes. Mude para “Em execução”, confira as reservas no estoque e conclua para conferir a devolução.
+3. Abra os detalhes da OS, impressão e PDF. Gere planilha personalizada pelo modal original.
+4. Abra a precificação, altere itens e diárias, salve e confira o resumo.
+5. Cadastre um pagamento com retenções. Confira o líquido e vincule um contrato para verificar o consumo.
+6. Abra detalhes, contratos separados, edição, anexo e planilhas de contratos.
+7. Faça entrada e saída manual de estoque, incluindo quantidade com três casas decimais, e abra o histórico.
+8. Analise e confirme arquivos fictícios nos quatro modais de importação. Confira os resultados nas respectivas telas.
+9. Exercite seleção em massa, envio à lixeira e restauração.
+10. Confira histórico e inconsistências; teste filtros e exportações.
+11. Abra o dashboard temporário e um relatório demonstrativo. O contexto deve informar que a integração usa conteúdo fictício.
+12. Repita os fluxos com os perfis de consulta e confirme as restrições.
+13. Recarregue a página, restaure o cenário e confira que outros armazenamentos não mudaram.
+14. Confira desktop e celular, incluindo menus, modais e rolagens próprias das telas.
+
+O painel de rede deve mostrar somente os arquivos estáticos locais. `window.DemoOS.requests` e `window.DemoOS.errors` registram apenas método, caminho e status das chamadas da demonstração, sem payloads, senhas ou conteúdo de anexos. `window.DemoOS.state` retorna uma cópia do estado para inspeção local.

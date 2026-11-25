@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Estoque (beta)</title>
+  <link rel="stylesheet" href="style.css?v=20260928-mobile-layout">
+  <script src="vendor/exceljs.min.js"></script>
+  <script src="vendor/pdfkit.standalone.js"></script>
+  <script src="retencoes-pagamentos.js"></script>
+  <script src="demo-regras-os.js"></script>
+  <script src="demo-relatorios.js"></script>
+  <script src="demo-inconsistencias.js"></script>
+  <script src="demo-engine.js"></script>
+  <script src="demo-adapter.js"></script>
+  <link rel="stylesheet" href="demo-ui.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-esquerda">
+      <div class="topbar-brand">
+        <img src="assets/identidade.svg" alt="Identidade da demonstração" class="topbar-logo" role="button" tabindex="0" title="Abrir menu principal" aria-label="Abrir menu principal" onclick="abrirMenuLateral()">
+        <div class="topbar-brand-texto">
+          <span class="topbar-subtitulo">Controle operacional</span>
+          <h1>Estoque (beta)</h1>
+        </div>
+      </div>
+    </div>
+    <div class="topbar-acoes">
+      <div class="usuario-logado-box">
+        <span class="usuario-logado-label">Logado como</span>
+        <strong id="usuarioLogadoNome">-</strong>
+      </div>
+    </div>
+  </header>
+
+  <main class="container-principal financeiro-page estoque-page">
+    <section class="cards-resumo cards-resumo-financeiro">
+      <div class="resumo-card"><span class="resumo-label">Itens ativos</span><strong id="estoqueResumoItens">0</strong></div>
+      <div class="resumo-card"><span class="resumo-label">Dispon&iacute;vel</span><strong id="estoqueResumoDisponivel">0</strong></div>
+      <div class="resumo-card"><span class="resumo-label">Em uso</span><strong id="estoqueResumoUso">0</strong></div>
+      <div class="resumo-card"><span class="resumo-label">Baixo estoque</span><strong id="estoqueResumoBaixo">0</strong></div>
+    </section>
+
+    <section class="barra-filtros barra-filtros-financeiro estoque-filtros">
+      <input id="buscaEstoque" type="text" placeholder="Buscar item, categoria ou alias..." oninput="filtrarEstoque()">
+      <select id="filtroStatusEstoque" onchange="filtrarEstoque()">
+        <option value="">Todos os status</option>
+        <option value="ok">OK</option>
+        <option value="baixo">Baixo</option>
+        <option value="zerado">Zerado</option>
+        <option value="inativo">Inativo</option>
+      </select>
+      <button class="btn-limpar" onclick="limparFiltrosEstoque()">Limpar</button>
+    </section>
+
+    <section class="financeiro-lista-box estoque-lista-box">
+      <div class="financeiro-lista-topo estoque-lista-topo">
+        <div>
+          <h2>Itens do estoque</h2>
+          <p>Baixa automatica acontece quando a OS entra em execu&ccedil;&atilde;o.</p>
+        </div>
+        <div class="estoque-acoes-topo">
+          <button class="btn-form btn-salvar estoque-btn-acao" onclick="abrirModalMovEstoque()">Entrada / sa&iacute;da</button>
+          <button class="btn-form btn-salvar estoque-btn-acao" onclick="abrirModalNovoItemEstoque()">Novo item</button>
+          <span class="financeiro-contador" id="estoqueContador">0</span>
+        </div>
+      </div>
+      <div id="listaEstoque" class="estoque-grid">
+        <div class="financeiro-vazio">Carregando estoque...</div>
+      </div>
+    </section>
+  </main>
+
+  <div class="modal" id="modalItemEstoque" role="dialog" aria-modal="true" aria-labelledby="tituloFormEstoque">
+    <div class="modal-content modal-grande estoque-modal estoque-modal-item">
+      <div class="modal-header">
+        <h2 id="tituloFormEstoque">Novo item</h2>
+        <button class="btn-fechar-modal" onclick="fecharModalItemEstoque()">&times;</button>
+      </div>
+      <p class="texto-modal-info">Cadastre ou edite itens do estoque. Quantidade de item existente muda por entrada ou sa&iacute;da manual.</p>
+      <div class="form-grid-financeiro estoque-form">
+        <label class="estoque-campo estoque-campo-nome"><span>Nome</span><input id="estoqueNome" autocomplete="off"></label>
+        <label class="estoque-campo"><span>Categoria</span><input id="estoqueCategoria" autocomplete="off"></label>
+        <label class="estoque-campo"><span>Unidade</span><input id="estoqueUnidade" placeholder="un"></label>
+        <label class="estoque-campo"><span>Quantidade inicial</span><input id="estoqueQuantidadeInicial" type="number" min="0" step="0.001"></label>
+        <label class="estoque-campo"><span>Estoque m&iacute;nimo</span><input id="estoqueMinimo" type="number" min="0" step="0.001"></label>
+        <label class="campo-largo estoque-campo"><span>Aliases</span><textarea id="estoqueAliases" placeholder="Um alias por linha. Ex: cadeira plastica"></textarea></label>
+        <label class="campo-largo estoque-campo"><span>Observa&ccedil;&otilde;es</span><textarea id="estoqueObservacoes"></textarea></label>
+        <label class="estoque-checkbox"><input id="estoqueAtivo" type="checkbox" checked> Item ativo</label>
+      </div>
+      <div class="modal-acoes">
+        <div class="modal-status" id="statusEstoqueItem" role="status" aria-live="polite"></div>
+        <button class="btn-form btn-cancelar" onclick="fecharModalItemEstoque()">Cancelar</button>
+        <button class="btn-form btn-salvar" onclick="salvarItemEstoque()">Salvar item</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="modalMovEstoque" role="dialog" aria-modal="true" aria-labelledby="tituloMovEstoque">
+    <div class="modal-content modal-media estoque-modal estoque-modal-movimento">
+      <div class="modal-header">
+        <h2 id="tituloMovEstoque">Entrada / sa&iacute;da manual</h2>
+        <button class="btn-fechar-modal" onclick="fecharModalMovEstoque()">&times;</button>
+      </div>
+      <p class="texto-modal-info">Use para compra, perda, quebra, descarte ou ajuste pontual.</p>
+      <div class="form-grid-financeiro estoque-form">
+        <label class="campo-largo estoque-campo"><span>Item</span><select id="estoqueMovItem"></select></label>
+        <label class="estoque-campo"><span>Tipo</span><select id="estoqueMovTipo"><option value="entrada_manual">Entrada</option><option value="saida_manual">Sa&iacute;da</option></select></label>
+        <label class="estoque-campo"><span>Quantidade</span><input id="estoqueMovQuantidade" type="number" min="0.001" step="0.001"></label>
+        <label class="campo-largo estoque-campo"><span>Motivo</span><input id="estoqueMovMotivo" placeholder="Compra, quebra, perda, descarte..."></label>
+        <label class="campo-largo estoque-campo"><span>Observa&ccedil;&otilde;es</span><textarea id="estoqueMovObservacoes"></textarea></label>
+      </div>
+      <div class="modal-acoes">
+        <div class="modal-status" id="statusEstoqueMov" role="status" aria-live="polite"></div>
+        <button class="btn-form btn-cancelar" onclick="fecharModalMovEstoque()">Cancelar</button>
+        <button class="btn-form btn-salvar" onclick="registrarMovimentacaoEstoque()">Registrar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="navegacao.js?v=20260928-revisao-textos"></script>
+  <script src="estoque.js?v=20260928-revisao-textos"></script>
+</body>
+</html>

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard OS Eventos</title>
+  <link rel="stylesheet" href="/style.css?v=20260928-filtros-data-celular">
+  <style>
+    .dashboard-temporario .card-info p { white-space: pre-wrap; overflow-wrap: anywhere; }
+    #relatorios-candidatos:not([hidden]) { display: grid; gap: 8px; margin-top: 8px; }
+    @media (max-width: 760px) { .dashboard-temporario .topbar-acoes .btn-topo { display: inline-flex; } }
+  </style>
+  <script src="/dashboard-temporario.js?v=20261109-os-relatorio" defer></script>
+  <script src="vendor/exceljs.min.js"></script>
+  <script src="vendor/pdfkit.standalone.js"></script>
+  <script src="retencoes-pagamentos.js"></script>
+  <script src="demo-regras-os.js"></script>
+  <script src="demo-relatorios.js"></script>
+  <script src="demo-inconsistencias.js"></script>
+  <script src="demo-engine.js"></script>
+  <script src="demo-adapter.js"></script>
+  <link rel="stylesheet" href="demo-ui.css">
+</head>
+<body class="dashboard-temporario">
+  <header class="topbar">
+    <div class="topbar-esquerda"><div class="topbar-brand">
+      <img src="/assets/identidade.svg" alt="Identidade da demonstração" class="topbar-logo">
+      <div class="topbar-brand-texto"><span class="topbar-subtitulo">Sistema interno de gest&atilde;o</span><h1>Dashboard de OS de Eventos</h1></div>
+    </div></div>
+    <div class="topbar-acoes"><div class="usuario-logado-box"><span class="usuario-logado-label">Logado como</span><strong>temporario</strong></div><button id="sair" type="button" class="btn-topo btn-secundario">Sair</button></div>
+  </header>
+
+  <main class="container-principal">
+    <section class="cards-resumo" aria-label="Resumo por status">
+      <div class="resumo-card"><span class="resumo-label">Pendentes</span><strong id="resumo-pendente">0</strong></div>
+      <div class="resumo-card"><span class="resumo-label">Autorizados</span><strong id="resumo-autorizado">0</strong></div>
+      <div class="resumo-card"><span class="resumo-label">Em execu&ccedil;&atilde;o</span><strong id="resumo-em_execucao">0</strong></div>
+      <div class="resumo-card"><span class="resumo-label">Na rua</span><strong id="resumo-na_rua">0</strong></div>
+      <div class="resumo-card"><span class="resumo-label">Executados</span><strong id="resumo-executado">0</strong></div>
+      <div class="resumo-card"><span class="resumo-label">Recusados</span><strong id="resumo-recusado">0</strong></div>
+    </section>
+
+    <section class="barra-filtros" aria-label="Filtros de eventos">
+      <div class="campo-busca-combinada"><input type="text" id="buscaGeral" placeholder="Buscar..." aria-label="Buscar eventos"><select id="campoBuscaFiltro" class="campo-busca-filtro" aria-label="Campo da busca"><option value="todos">Tudo</option><option value="numeroOS">Número da OS</option><option value="nomeEvento">Nome do evento</option><option value="localEvento">Local/endereço</option><option value="materiais">Materiais</option></select></div>
+      <select id="anoFiltro" class="ano-filtro-compacto" aria-label="Ano dos eventos"><option value="">Todos os anos</option></select>
+      <select id="filtroStatus" aria-label="Status dos eventos"><option value="">Todos os status</option><option value="pendente">Pendentes</option><option value="autorizado">Autorizados</option><option value="em_execucao">Em execu&ccedil;&atilde;o</option><option value="na_rua">Na rua</option><option value="executado">Executados</option><option value="recusado">Recusados</option></select>
+      <label class="filtro-data"><span class="filtro-data-ajuda">Data inicial &middot; dd/mm/aaaa</span><input type="date" id="dataInicialFiltro"></label>
+      <label class="filtro-data"><span class="filtro-data-ajuda">Data final &middot; dd/mm/aaaa</span><input type="date" id="dataFinalFiltro"></label>
+      <button class="btn-limpar" id="limparFiltros" type="button">Limpar filtros</button>
+    </section>
+
+    <section class="layout-dashboard">
+      <div class="kanban-area"><div class="kanban-board">
+        <div class="coluna coluna-pendente" id="pendente"><div class="coluna-topo"><div><h2>Eventos Pendentes</h2><p>Aguardando an&aacute;lise</p></div><span class="badge-coluna" id="badge-pendente">0</span></div><div class="cards"></div></div>
+        <div class="coluna coluna-autorizado" id="autorizado"><div class="coluna-topo"><div><h2>Eventos Autorizados</h2><p>Liberados para andamento</p></div><span class="badge-coluna" id="badge-autorizado">0</span></div><div class="cards"></div></div>
+        <div class="coluna coluna-execucao" id="em_execucao"><div class="coluna-topo"><div><h2>Em Execu&ccedil;&atilde;o</h2><p>Equipe em opera&ccedil;&atilde;o</p></div><span class="badge-coluna" id="badge-em_execucao">0</span></div><div class="cards"></div></div>
+        <div class="coluna coluna-na-rua" id="na_rua"><div class="coluna-topo"><div><h2>Na rua</h2><p>Fora do galp&atilde;o</p></div><span class="badge-coluna" id="badge-na_rua">0</span></div><div class="cards"></div></div>
+        <div class="coluna coluna-executado" id="executado"><div class="coluna-topo"><div><h2>Executados</h2><p>Eventos conclu&iacute;dos</p></div><span class="badge-coluna" id="badge-executado">0</span></div><div class="cards"></div></div>
+        <div class="coluna coluna-recusado" id="recusado"><div class="coluna-topo"><div><h2>Recusados</h2><p>N&atilde;o autorizados</p></div><span class="badge-coluna" id="badge-recusado">0</span></div><div class="cards"></div></div>
+      </div><p id="mensagem" role="status" aria-live="polite">Carregando eventos...</p></div>
+      <aside class="painel-lateral"><div class="painel-box painel-box-tab ativo"><div class="painel-cabecalho"><h3>Detalhe r&aacute;pido da OS</h3></div><div class="painel-conteudo"><div class="detalhe-os"><h4 id="detalhe-evento">Selecione um evento</h4><div class="detalhe-lista"><p><strong>Número da OS:</strong> <span id="detalhe-numero">-</span></p><p><strong>Data:</strong> <span id="detalhe-data">-</span></p><p><strong>Local/endereço:</strong> <span id="detalhe-local">-</span></p><p><strong>Materiais:</strong> <span id="detalhe-materiais">-</span></p></div><button id="btnRelatorioFotografico" type="button" class="btn-topo btn-secundario" disabled>Baixar relatório fotográfico</button><div id="relatorios-candidatos" hidden></div></div></div></div></aside>
+    </section>
+  </main>
+</body>
+</html>

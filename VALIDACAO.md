@@ -1,11 +1,9 @@
-# Validação da demonstração
+# Escopo da validação
 
-- 18 testes automatizados aprovados, incluindo status, dinheiro em centavos, pagamentos, limites de estoque, contratos, entrada de dados, restauração e isolamento.
-- Fluxos conferidos em navegador nos tamanhos de desktop e celular: 6 telas, cadastro e edição de OS, lista e kanban, filtros, contratos, saída e devolução de estoque, pagamento e histórico.
-- Persistência após recarregar, restauração, temas claro e escuro e formulário em celular verificados.
-- Nenhuma requisição externa observada nos fluxos testados. A política de conteúdo bloqueia conexões de dados.
-- Fonte e build revisados por lista de arquivos; sem bancos, anexos reais, credenciais ou configurações operacionais.
+A demonstração mantém nove páginas e o CSS principal integral. As substituições de identidade e os dados de exemplo são fictícios. O adaptador conserva os contratos de resposta usados por essas páginas e bloqueia conexões a serviços externos.
 
-Os testes do núcleo podem ser repetidos com `npm test`. O pacote de hospedagem é criado com `npm run build`.
+As verificações automatizadas abrangem contratos, regras de negócio, armazenamento, importações e geração de arquivos XLSX reais. A conferência de interface cobre navegação em desktop e celular, formulários originais, estoque por status, pagamentos com retenções, relatório PDF, planilhas, histórico e restauração.
 
-O ambiente é demonstrativo: dados locais, entrada sem senha e documentos sem validade. As limitações estão descritas no README.
+Os perfis são demonstrações locais de acesso. Relatórios fotográficos e mapas de empenhos usam conteúdo fictício, indicado no momento da ação. A persistência pertence ao navegador e não oferece colaboração simultânea ou autenticação real.
+
+Para repetir as verificações, consulte `TESTING.md`.
