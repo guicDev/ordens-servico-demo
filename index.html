@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Demonstração interativa de gestão de eventos, ordens de serviço, contratos, estoque e pagamentos com dados fictícios.">
+  <meta name="color-scheme" content="light dark">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:">
+  <title>Ordens de Serviço — Demonstração</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="demo.css">
+  <script src="core.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-brand"><div class="topbar-brand-texto"><span class="topbar-subtitulo">Demonstração interativa</span><h1>Ordens de Serviço</h1></div></div>
+    <div class="topbar-acoes"><button type="button" id="theme-button" class="btn-topo btn-secundario" aria-pressed="false">Tema escuro</button><button type="button" id="reset-button" class="btn-topo btn-secundario">Restaurar demonstração</button></div>
+  </header>
+  <div class="demo-banner">Todos os dados são fictícios. Alterações ficam neste navegador. Não informe dados reais.</div>
+  <nav class="app-nav" aria-label="Menu principal">
+    <a href="#dashboard" data-page="dashboard">Visão geral</a><a href="#ordens" data-page="ordens">Ordens de serviço</a><a href="#financeiro" data-page="financeiro">Financeiro</a><a href="#contratos" data-page="contratos">Contratos</a><a href="#estoque" data-page="estoque">Estoque</a><a href="#historico" data-page="historico">Histórico</a>
+  </nav>
+  <main id="main" class="container-principal" tabindex="-1"></main>
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+  <dialog id="modal" aria-labelledby="modal-title"><div class="modal-header"><h2 id="modal-title"></h2><button type="button" data-action="close" class="icon-button" aria-label="Fechar formulário">×</button></div><div id="modal-content"></div></dialog>
+  <section id="print-area" aria-hidden="true"></section>
+  <footer>Demonstração pública · Sem conexão com sistemas externos · Dados apenas no navegador</footer>
+</body>
+</html>
