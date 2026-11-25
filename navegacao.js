@@ -76,7 +76,7 @@ function usuarioTemPermissaoModulo(usuario, modulo) {
   return identificadores.some((identificador) => autorizados.has(identificador));
 }
 
-async function obterUsuarioAtual() {
+async function consultarUsuarioNavegacao() {
   const resposta = await fetch("/api/me", { cache: "no-store" });
   if (!resposta.ok) {
     window.location.href = "/login.html";
@@ -184,12 +184,14 @@ function abrirMenuLateral() {
   menu.classList.add("open");
   document.getElementById("sideMenuOverlay")?.classList.add("show");
   document.body.classList.add("menu-lateral-aberto");
+  document.querySelectorAll(".logo-menu-trigger, .menu-access-button").forEach((trigger) => trigger.setAttribute("aria-expanded", "true"));
 }
 
 function fecharMenuLateral() {
   document.getElementById("sideNavigation")?.classList.remove("open");
   document.getElementById("sideMenuOverlay")?.classList.remove("show");
   document.body.classList.remove("menu-lateral-aberto");
+  document.querySelectorAll(".logo-menu-trigger, .menu-access-button").forEach((trigger) => trigger.setAttribute("aria-expanded", "false"));
 }
 
 function mostrarAvisoSistema(mensagem, tipo = "erro", duracao = 4500) {
@@ -222,7 +224,21 @@ function prepararLogoMenu() {
   logo.setAttribute("tabindex", "0");
   logo.setAttribute("title", "Abrir menu principal");
   logo.setAttribute("aria-label", "Abrir menu principal");
+  logo.setAttribute("aria-controls", "sideNavigation");
+  logo.setAttribute("aria-expanded", "false");
   logo.classList.add("logo-menu-trigger");
+  const acesso = document.createElement("div");
+  acesso.className = "menu-access";
+  logo.before(acesso);
+  const botao = document.createElement("button");
+  botao.type = "button";
+  botao.className = "menu-access-button";
+  botao.textContent = "☰ Menu";
+  botao.title = "Abrir menu: pagamentos, contratos e outras telas";
+  botao.setAttribute("aria-controls", "sideNavigation");
+  botao.setAttribute("aria-expanded", "false");
+  botao.addEventListener("click", abrirMenuLateral);
+  acesso.append(logo, botao);
   logo.addEventListener("click", abrirMenuLateral);
   logo.addEventListener("keydown", (event) => {
     if (event.key === "Enter" || event.key === " ") {
@@ -377,7 +393,7 @@ async function logoutNavegacao() {
 
 async function inicializarNavegacao() {
   prepararLogoMenu();
-  if (!navegacaoUsuarioPromise) navegacaoUsuarioPromise = obterUsuarioAtual();
+  if (!navegacaoUsuarioPromise) navegacaoUsuarioPromise = consultarUsuarioNavegacao();
   const usuario = await navegacaoUsuarioPromise;
   if (!usuario) return null;
   navegacaoUsuarioAtual = usuario;
